@@ -1155,6 +1155,7 @@ def relatorios():
         pedidos_atuais, historico_caixas
     )
 
+    # ── Ranking de funcionários ──
     vendas_por_funcionario = {}
     for p in pedidos_atuais:
         if p.status == 'Cancelado':
@@ -1165,6 +1166,11 @@ def relatorios():
         vendas_por_funcionario[p.atendente]['faturamento'] += p.preco_final
     ranking_funcionarios = sorted(vendas_por_funcionario.items(),
                                   key=lambda x: x[1]['faturamento'], reverse=True)
+
+    # ── max_fat seguro (nunca 0 para evitar ZeroDivisionError) ──
+    max_fat = 0.0
+    if ranking_funcionarios:
+        max_fat = max((dados['faturamento'] for _, dados in ranking_funcionarios), default=0.0) or 0.0
 
     ultimo_caixa_id = session.pop('ultimo_caixa_id', None)
     ultimo_caixa    = next((f for f in historico_caixas if f.id == ultimo_caixa_id), None)
@@ -1190,6 +1196,7 @@ def relatorios():
         faturamento_mes=faturamento_mes,
         ranking_sabores=ranking_sabores,
         ranking_funcionarios=ranking_funcionarios,
+        max_fat=max_fat,
         historico_caixas=historico_caixas,
         ultimo_caixa=ultimo_caixa,
         usuario_atual=session['usuario'],

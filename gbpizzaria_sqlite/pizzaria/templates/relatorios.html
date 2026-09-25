@@ -60,7 +60,6 @@ html.dark .resultado-card.lucro-positivo .valor { color: #86efac; }
 html.dark .resultado-card.lucro-negativo .valor { color: #fca5a5; }
 html.dark .resultado-card .extra { color: #94a3b8; }
 
-/* Container do gráfico de lucro — altura fixa para dar respiro ao eixo Y */
 .chart-lucro-wrap {
     position: relative;
     height: 320px;
@@ -96,7 +95,7 @@ html.dark .resultado-card .extra { color: #94a3b8; }
     </div>
 </form>
 
-<!-- ── CARDS DE FATURAMENTO (curtos prazos) ──────────────────── -->
+<!-- ── CARDS DE FATURAMENTO ──────────────────────────────────── -->
 <div class="row g-3 mb-4">
     <div class="col-12 col-md-4">
         <div class="stat-card shadow-sm">
@@ -148,9 +147,7 @@ html.dark .resultado-card .extra { color: #94a3b8; }
         <div class="resultado-card">
             <div class="label">💰 {{ t("rel_lucro_faturamento") }}</div>
             <div class="valor" style="color:#111827;">R$ {{ "%.2f"|format(faturamento_periodo) }}</div>
-            <div class="extra">
-                {{ data_inicio }} → {{ data_fim }}
-            </div>
+            <div class="extra">{{ data_inicio }} → {{ data_fim }}</div>
         </div>
     </div>
 
@@ -158,9 +155,7 @@ html.dark .resultado-card .extra { color: #94a3b8; }
         <div class="resultado-card">
             <div class="label">🛒 {{ t("rel_lucro_compras") }}</div>
             <div class="valor" style="color:#dc2626;">R$ {{ "%.2f"|format(total_compras) }}</div>
-            <div class="extra">
-                {{ n_compras }} {{ t("rel_lucro_n_compras") }}
-            </div>
+            <div class="extra">{{ n_compras }} {{ t("rel_lucro_n_compras") }}</div>
         </div>
     </div>
 
@@ -170,12 +165,8 @@ html.dark .resultado-card .extra { color: #94a3b8; }
                 {% if lucro_liquido >= 0 %}📈 {{ t("rel_lucro_positivo") }}{% else %}📉 {{ t("rel_lucro_negativo") }}{% endif %}
                 — {{ t("rel_lucro_liquido") }}
             </div>
-            <div class="valor">
-                R$ {{ "%.2f"|format(lucro_liquido) }}
-            </div>
-            <div class="extra">
-                {{ t("rel_lucro_margem") }}: {{ "%.1f"|format(margem) }}%
-            </div>
+            <div class="valor">R$ {{ "%.2f"|format(lucro_liquido) }}</div>
+            <div class="extra">{{ t("rel_lucro_margem") }}: {{ "%.1f"|format(margem) }}%</div>
         </div>
     </div>
 </div>
@@ -232,7 +223,7 @@ html.dark .resultado-card .extra { color: #94a3b8; }
 </div>
 {% endif %}
 
-<!-- ── GRÁFICOS EXISTENTES (pizzas + caixas) ─────────────────── -->
+<!-- ── GRÁFICOS EXISTENTES ───────────────────────────────────── -->
 <div class="row g-3 mb-4">
     <div class="col-12 col-lg-5">
         <div class="card shadow-sm p-4">
@@ -288,7 +279,6 @@ html.dark .resultado-card .extra { color: #94a3b8; }
                     </tr>
                 </thead>
                 <tbody>
-                    {% set max_fat = ranking_funcionarios[0][1].faturamento if ranking_funcionarios else 1 %}
                     {% for nome, dados in ranking_funcionarios %}
                     <tr class="table-row-item">
                         <td style="padding:14px 16px;font-weight:700;color:#9ca3af;">{{ loop.index }}</td>
@@ -303,8 +293,9 @@ html.dark .resultado-card .extra { color: #94a3b8; }
                         <td style="padding:14px 16px;text-align:center;font-weight:700;">{{ dados.pedidos }}</td>
                         <td style="padding:14px 16px;font-weight:800;color:#16a34a;">R$ {{ "%.2f"|format(dados.faturamento) }}</td>
                         <td style="padding:14px 16px;min-width:140px;">
+                            {% set pct = (dados.faturamento / max_fat * 100) if max_fat and max_fat > 0 else 0 %}
                             <div class="prog-bg" style="border-radius:4px;height:8px;overflow:hidden;background:#f3f4f6;">
-                                <div style="background:#dc2626;height:100%;border-radius:4px;width:{{ (dados.faturamento / max_fat * 100)|int }}%;"></div>
+                                <div style="background:#dc2626;height:100%;border-radius:4px;width:{{ pct|int }}%;"></div>
                             </div>
                         </td>
                     </tr>
