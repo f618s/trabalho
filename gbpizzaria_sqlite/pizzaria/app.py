@@ -2,17 +2,6 @@
 """
 app.py
 Aplicação Flask do GB.Pizzaria — Flask-SQLAlchemy.
-
-Features:
-  #7  — Delivery tracking
-  #8  — Combos e promoções
-  #11 — Múltiplos sabores (meio a meio)
-  #12 — Adicionais / bordas
-  #ESTOQUE — Controle de estoque + Compras + Fornecedores + Fardo
-  #PERFIS  — Funcionário e Gerente (controle de acesso)
-  #CNPJ    — Validação de CNPJ de fornecedores
-  #LUCRO   — Faturamento vs Compras no relatório
-  #OPCAOA  — Se nada for filtrado, assume HOJE
 """
 
 import json
@@ -56,14 +45,13 @@ from i18n import t, get_lang, SUPPORTED_LANGS
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "chave_padrao_insegura_troque_no_env")
 
-# ── Config geral ─────────────────────────────────────────────
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 # ── Inicializa Flask-SQLAlchemy + cria tabelas ───────────────
 db_init_app(app)
 
-# ── Anti-cache em desenvolvimento ────────────────────────────
+
 @app.after_request
 def add_no_cache_headers(response):
     if app.debug:
@@ -72,6 +60,7 @@ def add_no_cache_headers(response):
         response.headers['Expires'] = '0'
     return response
 
+
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -79,10 +68,12 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+
 @app.errorhandler(429)
 def rate_limit_handler(e):
     flash(t('login_erro_tentativas'), 'danger')
     return redirect(url_for('login'))
+
 
 app.jinja_env.globals['t']        = t
 app.jinja_env.globals['get_lang'] = get_lang
@@ -165,8 +156,7 @@ def _seed_cardapio():
         combos_iniciais = [
             Combo(nome="Combo Casal",
                   descricao="2 pizzas grandes + 1 refrigerante 2L",
-                  desconto=10.0,
-                  ativo=True,
+                  desconto=10.0, ativo=True,
                   itens_json=json.dumps([
                       {"tipo":"Pizza","nome":"Pizza Grande 1","preco":45.0,"quantidade":1},
                       {"tipo":"Pizza","nome":"Pizza Grande 2","preco":45.0,"quantidade":1},
@@ -174,8 +164,7 @@ def _seed_cardapio():
                   ], ensure_ascii=False)),
             Combo(nome="Combo Família",
                   descricao="3 pizzas grandes + 2 refrigerantes 2L",
-                  desconto=20.0,
-                  ativo=True,
+                  desconto=20.0, ativo=True,
                   itens_json=json.dumps([
                       {"tipo":"Pizza","nome":"Pizza Grande 1","preco":45.0,"quantidade":1},
                       {"tipo":"Pizza","nome":"Pizza Grande 2","preco":45.0,"quantidade":1},
@@ -184,8 +173,7 @@ def _seed_cardapio():
                   ], ensure_ascii=False)),
             Combo(nome="Combo Solo",
                   descricao="1 pizza grande + 1 refrigerante lata",
-                  desconto=5.0,
-                  ativo=True,
+                  desconto=5.0, ativo=True,
                   itens_json=json.dumps([
                       {"tipo":"Pizza","nome":"Pizza Grande","preco":45.0,"quantidade":1},
                       {"tipo":"Bebida","nome":"Refrigerante Lata","preco":6.0,"quantidade":1},
@@ -199,7 +187,6 @@ with app.app_context():
     _seed_cardapio()
 
 
-# ── Context processor ────────────────────────────────────────
 @app.context_processor
 def injetar_alertas_estoque():
     if 'usuario' not in session:
@@ -219,9 +206,9 @@ def mudar_idioma(lang):
     return redirect(request.referrer or url_for('dashboard'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          LOGIN / CADASTRO
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        LOGIN / CADASTRO
+# ═════════════════════════════════════════════════════════════
 @app.route('/', methods=['GET', 'POST'])
 @limiter.limit('10 per minute', methods=['POST'], error_message='login_erro_tentativas')
 def login():
@@ -290,9 +277,9 @@ def logout():
     return redirect(url_for('login'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          DASHBOARD
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        DASHBOARD
+# ═════════════════════════════════════════════════════════════
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     if login_obrigatorio():
@@ -337,10 +324,10 @@ def _processar_novo_pedido():
         flash('Adicione pelo menos um item ao pedido!', 'danger')
         return redirect(url_for('dashboard'))
 
-    # DTO em memória
-    itens = [ItemPedidoDTO.from_dict(i) for i in itens_brutos]
+    # Constrói os DTOs (leves, só pra checagem de estoque e montagem)
+    itens_dto = [ItemPedidoDTO.from_dict(i) for i in itens_brutos]
 
-    problemas = estoque_repo.verificar_disponibilidade(itens)
+    problemas = estoque_repo.verificar_disponibilidade(itens_dto)
     if problemas:
         for p in problemas:
             flash(f"Sem estoque: {p['nome']} (disponível: {p['disponivel']:g})", 'danger')
@@ -350,6 +337,7 @@ def _processar_novo_pedido():
     teve_desconto = cliente_encontrado is not None
     nome_cliente  = cliente_encontrado.nome if cliente_encontrado else cliente_identificador or '—'
 
+    # Cria o Pedido ORM
     novo_pedido = Pedido(
         atendente=session['usuario'],
         cliente=nome_cliente,
@@ -364,11 +352,14 @@ def _processar_novo_pedido():
         data=datetime.now().strftime('%Y-%m-%d'),
         status=Pedido.STATUS_PENDENTE,
     )
-    pedidos_repo.adicionar(novo_pedido)
 
-    estoque_repo.baixar_por_pedido(novo_pedido, usuario=session['usuario'])
+    # Salva pedido + itens via repositório (que já faz o refresh)
+    pedido_salvo = pedidos_repo.adicionar(novo_pedido, itens_dto)
 
-    msg = f"Pedido #{novo_pedido.id} registrado!"
+    # Baixa no estoque (usa o objeto já recarregado com os itens)
+    estoque_repo.baixar_por_pedido(pedido_salvo, usuario=session['usuario'])
+
+    msg = f"Pedido #{pedido_salvo.id} registrado!"
     if teve_desconto:
         msg += " (10% de desconto aplicado)."
     if combo_desconto > 0:
@@ -439,9 +430,9 @@ def atualizar_status(venda_id):
     return redirect(url_for('dashboard'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          PRODUTOS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        PRODUTOS
+# ═════════════════════════════════════════════════════════════
 @app.route('/produtos')
 def produtos():
     if login_obrigatorio():
@@ -557,9 +548,9 @@ def comanda(venda_id):
     return render_template('comanda.html', pedido=pedido)
 
 
-# ─────────────────────────────────────────────────────────────
-#                          DELIVERY
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        DELIVERY
+# ═════════════════════════════════════════════════════════════
 @app.route('/entrega/<int:venda_id>')
 def rastreio_entrega(venda_id):
     pedido = pedidos_repo.buscar_por_id(venda_id)
@@ -586,9 +577,9 @@ def avancar_entrega(venda_id):
     return redirect(url_for('dashboard'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          COMBOS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        COMBOS
+# ═════════════════════════════════════════════════════════════
 @app.route('/combos')
 def combos():
     if login_obrigatorio():
@@ -623,8 +614,7 @@ def novo_combo():
         return redirect(url_for('combos'))
 
     combos_repo.adicionar(Combo(
-        nome=nome, descricao=descricao, desconto=desconto,
-        ativo=True,
+        nome=nome, descricao=descricao, desconto=desconto, ativo=True,
         itens_json=json.dumps(itens, ensure_ascii=False)))
     flash(f'Combo "{nome}" criado!', 'success')
     return redirect(url_for('combos'))
@@ -649,9 +639,9 @@ def remover_combo(combo_id):
     return redirect(url_for('combos'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          ADICIONAIS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        ADICIONAIS
+# ═════════════════════════════════════════════════════════════
 @app.route('/adicionais')
 def adicionais():
     if login_obrigatorio():
@@ -701,9 +691,9 @@ def remover_adicional(adic_id):
     return redirect(url_for('adicionais'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          ESTOQUE
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        ESTOQUE
+# ═════════════════════════════════════════════════════════════
 @app.route('/estoque')
 def estoque():
     if login_obrigatorio():
@@ -766,9 +756,9 @@ def definir_minimo_estoque(produto_id):
     return redirect(url_for('estoque'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          COMPRAS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        COMPRAS
+# ═════════════════════════════════════════════════════════════
 @app.route('/compras')
 def compras():
     if gerente_obrigatorio():
@@ -906,9 +896,9 @@ def compra_fardo():
     return redirect(url_for('estoque'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          FORNECEDORES
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        FORNECEDORES
+# ═════════════════════════════════════════════════════════════
 @app.route('/fornecedores')
 def fornecedores():
     if gerente_obrigatorio():
@@ -1013,9 +1003,9 @@ def historico_fornecedor(f_id):
     )
 
 
-# ─────────────────────────────────────────────────────────────
-#                          USUÁRIOS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        USUÁRIOS
+# ═════════════════════════════════════════════════════════════
 @app.route('/usuarios')
 def usuarios():
     if gerente_obrigatorio():
@@ -1067,9 +1057,9 @@ def remover_usuario(usuario):
     return redirect(url_for('usuarios'))
 
 
-# ─────────────────────────────────────────────────────────────
-#                          CAIXA
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        CAIXA
+# ═════════════════════════════════════════════════════════════
 @app.route('/fechar_caixa', methods=['POST'])
 def fechar_caixa():
     if login_obrigatorio():
@@ -1080,17 +1070,41 @@ def fechar_caixa():
         flash('Fila vazia. Não há vendas para fechar.', 'warning')
         return redirect(url_for('dashboard'))
 
+    # Só pedidos não cancelados
+    ativos = [p for p in pedidos if p.status != Pedido.STATUS_CANCELADO]
+    faturamento_total = sum((p.preco_final or 0.0) for p in ativos)
+
+    # Resumo por forma de pagamento
+    resumo = {forma: 0.0 for forma in FechamentoCaixa.FORMAS_PAGAMENTO_PADRAO}
+    for p in ativos:
+        forma = p.forma_pagamento or 'Dinheiro'
+        resumo[forma] = resumo.get(forma, 0.0) + (p.preco_final or 0.0)
+
+    # Itens arquivados (todos os itens dos pedidos)
+    itens_arquivados = []
+    for p in pedidos:
+        for item in p.itens:
+            itens_arquivados.append({
+                'tipo': item.tipo,
+                'nome': item.nome,
+                'preco': item.preco,
+                'quantidade': item.quantidade,
+            })
+
     fechamento = FechamentoCaixa(
         usuario=session['usuario'],
         data_fechamento=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        total_vendas=len(pedidos),
-        faturamento_total=sum(p.preco_final for p in pedidos),
+        total_vendas=len(ativos),
+        faturamento_total=faturamento_total,
     )
-    caixa_repo.adicionar(fechamento)
+    caixa_repo.adicionar(fechamento,
+                         resumo_pagamentos=resumo,
+                         itens_arquivados=itens_arquivados)
+
     pedidos_repo.limpar()
 
     session['ultimo_caixa_id'] = fechamento.id
-    flash('Caixa fechado! A fila de produção foi limpa.', 'success')
+    flash(f'Caixa fechado! Faturamento: R$ {faturamento_total:.2f}', 'success')
     return redirect(url_for('relatorios'))
 
 
@@ -1099,8 +1113,7 @@ def gerar_pdf_caixa(caixa_id):
     if login_obrigatorio():
         return redirect(url_for('login'))
 
-    fechamento = caixa_repo.listar()
-    fechamento = next((f for f in fechamento if f.id == caixa_id), None)
+    fechamento = next((f for f in caixa_repo.listar() if f.id == caixa_id), None)
     if not fechamento:
         flash('Fechamento não encontrado.', 'danger')
         return redirect(url_for('relatorios'))
@@ -1111,9 +1124,9 @@ def gerar_pdf_caixa(caixa_id):
                      mimetype='application/pdf')
 
 
-# ─────────────────────────────────────────────────────────────
-#                          RELATÓRIOS
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        RELATÓRIOS
+# ═════════════════════════════════════════════════════════════
 @app.route('/relatorios')
 def relatorios():
     if gerente_obrigatorio():
@@ -1170,7 +1183,8 @@ def relatorios():
     # ── max_fat seguro (nunca 0 para evitar ZeroDivisionError) ──
     max_fat = 0.0
     if ranking_funcionarios:
-        max_fat = max((dados['faturamento'] for _, dados in ranking_funcionarios), default=0.0) or 0.0
+        max_fat = max((dados['faturamento'] for _, dados in ranking_funcionarios),
+                      default=0.0) or 0.0
 
     ultimo_caixa_id = session.pop('ultimo_caixa_id', None)
     ultimo_caixa    = next((f for f in historico_caixas if f.id == ultimo_caixa_id), None)
@@ -1287,9 +1301,9 @@ def _calcular_faturamentos(pedidos_atuais, historico_caixas):
     return fd, fs, fm
 
 
-# ─────────────────────────────────────────────────────────────
-#                          PDF (comprovante)
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        PDF (comprovante)
+# ═════════════════════════════════════════════════════════════
 @app.route('/nota/<int:venda_id>')
 def gerar_nota(venda_id):
     if login_obrigatorio():
@@ -1306,9 +1320,9 @@ def gerar_nota(venda_id):
                      mimetype='application/pdf')
 
 
-# ─────────────────────────────────────────────────────────────
-#                          CONFIGURAÇÕES
-# ─────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════
+#                        CONFIGURAÇÕES
+# ═════════════════════════════════════════════════════════════
 @app.route('/configuracoes/salvar', methods=['POST'])
 def salvar_configuracoes():
     if login_obrigatorio():

@@ -149,7 +149,6 @@ class ProdutoRepositorio:
         db.session.add(p)
         db.session.flush()
 
-        # Cria linha de estoque
         if not Estoque.query.get(p.id):
             db.session.add(Estoque(produto_id=p.id, quantidade=0,
                                    minimo=5, unidade='un'))
@@ -253,7 +252,12 @@ class PedidoRepositorio:
     def buscar_por_id(self, pedido_id):
         return Pedido.query.get(pedido_id)
 
-    def adicionar(self, pedido_obj):
+    def adicionar(self, pedido_obj, itens_dto=None):
+        """
+        Persiste o pedido + itens.
+        - pedido_obj: instância de Pedido (ORM)
+        - itens_dto: lista de ItemPedidoDTO (opcional)
+        """
         p = Pedido(
             atendente=pedido_obj.atendente,
             cliente=pedido_obj.cliente,
@@ -272,16 +276,25 @@ class PedidoRepositorio:
         db.session.add(p)
         db.session.flush()
 
-        for item in pedido_obj.itens:
+        # Aceita itens de várias origens
+        itens = itens_dto or getattr(pedido_obj, '_itens_dto', None) or getattr(pedido_obj, 'itens', [])
+
+        for item in itens:
             i = ItemPedido(
-                pedido_id=p.id, tipo=item.tipo, nome=item.nome,
-                preco=item.preco, quantidade=item.quantidade,
-                adicionais_json=json.dumps(item.adicionais, ensure_ascii=False),
+                pedido_id=p.id,
+                tipo=item.tipo,
+                nome=item.nome,
+                preco=item.preco,
+                quantidade=item.quantidade,
+                adicionais_json=json.dumps(
+                    getattr(item, 'adicionais', []) or [], ensure_ascii=False),
             )
             db.session.add(i)
 
         db.session.commit()
-        pedido_obj.id = p.id
+
+        # Recarrega para popular .itens
+        db.session.refresh(p)
         return p
 
     def atualizar_status(self, pedido_id):
@@ -322,7 +335,6 @@ class PedidoRepositorio:
                 .order_by(Pedido.id).all())
 
     def limpar(self):
-        # Apaga itens primeiro (por causa da FK), depois pedidos
         ItemPedido.query.delete()
         Pedido.query.delete()
         db.session.commit()
@@ -337,7 +349,7 @@ class CaixaRepositorio:
     def listar(self):
         return FechamentoCaixa.query.order_by(FechamentoCaixa.id).all()
 
-    def adicionar(self, fechamento_obj):
+    def adicionar(self, fechamento_obj, resumo_pagamentos=None, itens_arquivados=None):
         f = FechamentoCaixa(
             usuario=fechamento_obj.usuario,
             data_fechamento=fechamento_obj.data_fechamento,
@@ -347,11 +359,15 @@ class CaixaRepositorio:
         db.session.add(f)
         db.session.flush()
 
-        for forma, valor in fechamento_obj.resumo_pagamentos.items():
+        # Resumo por forma de pagamento
+        resumo = resumo_pagamentos or getattr(fechamento_obj, 'resumo_pagamentos', {}) or {}
+        for forma, valor in resumo.items():
             db.session.add(ResumoPagamento(
                 fechamento_id=f.id, forma=forma, valor=valor))
 
-        for item in fechamento_obj.itens_arquivados:
+        # Itens arquivados
+        itens = itens_arquivados or getattr(fechamento_obj, 'itens_arquivados', []) or []
+        for item in itens:
             db.session.add(ItemArquivado(
                 fechamento_id=f.id, tipo=item['tipo'], nome=item['nome'],
                 preco=item['preco'], quantidade=item['quantidade']))
