@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Comanda #{{ pedido.id }}</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Courier New', monospace; }
+        body { background:#fff; color:#000; padding:20px; }
+        .comanda { max-width:320px; margin:0 auto; }
+        .header { text-align:center; border-bottom:2px dashed #000; padding-bottom:12px; margin-bottom:12px; }
+        .header h1 { font-size:22px; font-weight:900; letter-spacing:2px; }
+        .header p  { font-size:12px; margin-top:2px; }
+        .pedido-num { font-size:28px; font-weight:900; text-align:center; margin:10px 0; letter-spacing:3px; }
+        .info-row { display:flex; justify-content:space-between; font-size:12px; padding:2px 0; }
+        .info-row strong { font-size:11px; color:#444; text-transform:uppercase; }
+        .divider { border:none; border-top:1px dashed #000; margin:10px 0; }
+        .items-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+        .item-row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; }
+        .item-row .qtd { font-weight:700; min-width:28px; }
+        .item-row .nome { flex:1; padding:0 6px; }
+        .item-row .preco { font-weight:700; }
+        .adics-list { font-size:11px; color:#444; padding:2px 0 6px 28px; }
+        .adics-list .adic-line { display:flex; justify-content:space-between; padding:1px 0; }
+        .obs-box { background:#f5f5f5; border:1px solid #ccc; border-radius:4px; padding:6px 8px; font-size:12px; margin:8px 0; }
+        .total-row { display:flex; justify-content:space-between; font-size:16px; font-weight:900; padding:6px 0; }
+        .desconto-row { display:flex; justify-content:space-between; font-size:12px; color:#444; }
+        .footer { text-align:center; font-size:11px; color:#666; margin-top:12px; border-top:2px dashed #000; padding-top:10px; }
+        .status-badge { text-align:center; font-size:13px; font-weight:700; padding:6px; border-radius:6px; margin:8px 0; }
+        .entrega-badge { text-align:center; font-size:12px; font-weight:700; padding:5px; border-radius:6px; margin:6px 0; background:#fff7ed; color:#c2410c; border:1px dashed #fed7aa; }
+        .btn-print { display:block; margin:20px auto; padding:10px 32px; background:#000; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:1px; }
+        @media print {
+            .btn-print { display:none; }
+            body { padding:0; }
+        }
+    </style>
+</head>
+<body>
+<div class="comanda">
+    <div class="header">
+        <h1>GB PIZZARIA</h1>
+        <p>Sistema de Gestão Interno</p>
+    </div>
+
+    <div class="pedido-num">PEDIDO #{{ pedido.id }}</div>
+
+    <div class="info-row"><strong>Atendente</strong><span>{{ pedido.atendente }}</span></div>
+    <div class="info-row"><strong>Cliente</strong><span>{{ pedido.cliente or '—' }}</span></div>
+    <div class="info-row"><strong>Data</strong><span>{{ pedido.data }}</span></div>
+    <div class="info-row"><strong>Entrega</strong>
+        <span>{% if pedido.tipo_entrega == 'Entrega' %}Domicílio{% else %}Balcão{% endif %}</span>
+    </div>
+    {% if pedido.tipo_entrega == 'Entrega' and pedido.endereco %}
+    <div class="info-row"><strong>Endereço</strong><span>{{ pedido.endereco }}</span></div>
+    {% endif %}
+    <div class="info-row"><strong>Pagamento</strong><span>{{ pedido.forma_pagamento }}</span></div>
+
+    {% if pedido.status == 'Cancelado' %}
+    <div class="status-badge" style="background:#fee2e2;color:#dc2626;">*** CANCELADO ***</div>
+    {% if pedido.motivo_cancelamento %}
+    <div class="info-row"><strong>Motivo</strong><span>{{ pedido.motivo_cancelamento }}</span></div>
+    {% endif %}
+    {% endif %}
+
+    {% if pedido.combo_id %}
+    <div class="status-badge" style="background:#f3e8ff;color:#7c3aed;">🎁 PEDIDO COM COMBO</div>
+    {% endif %}
+
+    {% if pedido.tipo_entrega == 'Entrega' %}
+    <div class="entrega-badge">
+        🛵 Entrega:
+        {% if pedido.entrega_status == 'preparando' %}Preparando
+        {% elif pedido.entrega_status == 'saiu' %}Saiu para entrega
+        {% else %}Entregue{% endif %}
+        {% if pedido.entrega_motoboy %} — {{ pedido.entrega_motoboy }}{% endif %}
+    </div>
+    {% endif %}
+
+    <hr class="divider">
+
+    <div class="items-title">Itens do Pedido</div>
+    {% for item in pedido.itens %}
+    <div class="item-row">
+        <span class="qtd">{{ item.quantidade }}x</span>
+        <span class="nome">{{ item.nome }}</span>
+        <span class="preco">R$ {{ "%.2f"|format(item.total) }}</span>
+    </div>
+    {% if item.adicionais %}
+    <div class="adics-list">
+        {% for a in item.adicionais %}
+        <div class="adic-line">
+            <span>+ {{ a.nome }}</span>
+            <span>R$ {{ "%.2f"|format(a.preco) }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if pedido.observacoes %}
+    <div class="obs-box">📝 OBS: {{ pedido.observacoes }}</div>
+    {% endif %}
+
+    <hr class="divider">
+
+    {% if pedido.teve_desconto %}
+    <div class="desconto-row"><span>Subtotal</span><span>R$ {{ "%.2f"|format(pedido.subtotal_itens) }}</span></div>
+    <div class="desconto-row">
+        <span>Desconto cliente (10%)</span>
+        <span>- R$ {{ "%.2f"|format(pedido.subtotal_itens * 0.10) }}</span>
+    </div>
+    {% endif %}
+    {% if pedido.combo_desconto and pedido.combo_desconto > 0 %}
+    <div class="desconto-row">
+        <span>Desconto combo</span>
+        <span>- R$ {{ "%.2f"|format(pedido.combo_desconto) }}</span>
+    </div>
+    {% endif %}
+    {% if pedido.taxa_entrega > 0 %}
+    <div class="desconto-row"><span>Taxa de entrega</span><span>R$ {{ "%.2f"|format(pedido.taxa_entrega) }}</span></div>
+    {% endif %}
+
+    <div class="total-row"><span>TOTAL</span><span>R$ {{ "%.2f"|format(pedido.preco_final) }}</span></div>
+
+    <div class="footer">
+        Obrigado pela preferência!<br>
+        GB Pizzaria — Documento interno sem valor fiscal
+    </div>
+</div>
+
+<button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR</button>
+<script>
+    // Auto-abre o diálogo de impressão se vier de redirecionamento
+    if (window.opener) { window.onload = function(){ window.print(); } }
+</script>
+</body>
+</html>

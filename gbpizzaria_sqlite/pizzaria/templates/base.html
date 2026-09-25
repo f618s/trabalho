@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GB Pizzaria{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+
+        :root {
+            --sidebar-w: 240px;
+            --red: #dc2626;
+            --red-dark: #b91c1c;
+            --red-light: #fef2f2;
+            --sidebar-bg: #111827;
+            --sidebar-hover: #1f2937;
+            --sidebar-active: #dc2626;
+            --text-muted-custom: #6b7280;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --input-bg: #ffffff;
+            --topbar-bg: #ffffff;
+        }
+        html.dark {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+            --topbar-bg: #1e293b;
+            --sidebar-bg: #020617;
+            --sidebar-hover: #0f172a;
+        }
+        html.dark body { background: var(--bg); color: var(--text-primary); }
+        html.dark .main-content { background: var(--bg); }
+        html.dark .topbar { background: var(--topbar-bg); border-color: var(--border-color); }
+        html.dark .topbar h2 { color: var(--text-primary); }
+        html.dark .card, html.dark .stat-card { background: var(--card-bg); color: var(--text-primary); }
+        html.dark .form-control, html.dark .form-select {
+            background: var(--input-bg); border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        html.dark .form-control::placeholder { color: #475569; }
+        html.dark .table { color: var(--text-primary); }
+        html.dark .table-light, html.dark thead { background: #1e293b !important; color: #94a3b8; }
+        html.dark .table-hover tbody tr:hover { background: #273549; }
+        html.dark .btn-ghost { background: #1e293b; color: #e2e8f0; }
+        html.dark .btn-ghost:hover { background: #334155; }
+        html.dark .offcanvas { background: #1e293b; color: var(--text-primary); }
+        html.dark .offcanvas-body .form-label { color: #94a3b8; }
+        html.dark .modal-content { background: #1e293b; color: var(--text-primary); }
+        html.dark .modal-body .form-label { color: #94a3b8; }
+        html.dark .kanban-col { background: #1e293b; border-color: #334155; }
+        html.dark .kanban-header { border-color: #334155; color: var(--text-primary); }
+        html.dark .order-card { background: #0f172a; border-color: #334155; }
+        html.dark .order-card .order-client { color: #f1f5f9; }
+        html.dark .order-card .order-item { color: #94a3b8; }
+        html.dark .item-cart-line { background: #0f172a; border-color: #334155; }
+        html.dark .stat-card .stat-label { color: #94a3b8; }
+        html.dark .stat-card .stat-value { color: #f1f5f9; }
+        html.dark hr { border-color: #334155; }
+        html.dark .alert-success { background:#052e16; color:#86efac; }
+        html.dark .alert-danger  { background:#450a0a; color:#fca5a5; }
+        html.dark .alert-warning { background:#422006; color:#fcd34d; }
+        html.dark .alert-info    { background:#082f49; color:#7dd3fc; }
+
+        html.dark table { color: var(--text-primary); }
+        html.dark .table { --bs-table-bg: #1e293b; --bs-table-hover-bg: #273549; color: #f1f5f9; }
+        html.dark .table td, html.dark .table th { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+        html.dark .table thead td, html.dark .table thead th { background-color: #0f172a !important; color: #94a3b8 !important; border-color: #334155 !important; }
+        html.dark .table-light, html.dark .table-light th, html.dark .table-light td { background-color: #0f172a !important; color: #94a3b8 !important; }
+        html.dark .table-hover tbody tr:hover td, html.dark .table-hover tbody tr:hover th { background-color: #273549 !important; }
+
+        html.dark .offcanvas-body  { background:#1e293b; color:var(--text-primary); }
+        html.dark .dk-box          { background:#0f172a !important; border-color:#334155 !important; }
+        html.dark .dk-row          { background:#0f172a !important; border-color:#334155 !important; }
+        html.dark .item-cart-line  { background:#0f172a !important; border-color:#334155 !important; color:var(--text-primary); }
+        html.dark .form-control[readonly] { background:#0f172a !important; }
+        html.dark .input-group-text { background:#0f172a !important; border-color:#334155 !important; color:#94a3b8 !important; }
+
+        html.dark .kanban-col  { background:#1e293b !important; border-color:#334155 !important; }
+        html.dark .order-card  { background:#0f172a !important; border-color:#334155 !important; }
+        html.dark .order-card .order-id     { color:#475569; }
+        html.dark .order-card .order-client { color:#f1f5f9; }
+        html.dark .order-card .order-item   { color:#94a3b8; }
+        html.dark .order-card .order-delivery { color:#94a3b8; }
+        html.dark .order-card hr { border-color:#1e293b !important; }
+
+        html.dark .stat-card { background:#1e293b !important; }
+        html.dark .tab-pill:not(.active) { background:#1e293b; color:#94a3b8; }
+        html.dark .product-row-inactive  { opacity:.35; }
+        html.dark .delivery-section { background:#1a1200 !important; border-color:#713f12 !important; }
+        html.dark .delivery-section .form-label { color:#fbbf24 !important; }
+        html.dark .obs-badge { background:#1c1900 !important; border-color:#713f12 !important; color:#fbbf24 !important; }
+        html.dark .badge-desconto { background:#2e1065; color:#c4b5fd; }
+
+        body { background: var(--bg); margin: 0; }
+
+        .sidebar {
+            position: fixed; top: 0; left: 0;
+            width: var(--sidebar-w); height: 100vh;
+            background: var(--sidebar-bg);
+            display: flex; flex-direction: column;
+            z-index: 1000; overflow-y: auto;
+        }
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid #1f2937;
+        }
+        .sidebar-brand .logo-icon {
+            width: 40px; height: 40px;
+            background: var(--red);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; margin-bottom: 10px;
+        }
+        .sidebar-brand h1 {
+            color: #fff; font-size: 15px; font-weight: 700;
+            margin: 0; letter-spacing: .3px;
+        }
+        .sidebar-brand p {
+            color: #6b7280; font-size: 11px; margin: 2px 0 0;
+        }
+        .sidebar-section {
+            padding: 20px 12px 8px;
+            font-size: 10px; font-weight: 600;
+            color: #4b5563; letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .sidebar-nav { padding: 0 12px; flex: 1; }
+        .nav-link-sidebar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 12px; border-radius: 8px;
+            color: #9ca3af; font-size: 13.5px; font-weight: 500;
+            text-decoration: none; margin-bottom: 2px;
+            transition: all .15s;
+        }
+        .nav-link-sidebar i { font-size: 16px; width: 18px; text-align: center; }
+        .nav-link-sidebar:hover { background: var(--sidebar-hover); color: #fff; }
+        .nav-link-sidebar.active { background: var(--red); color: #fff; }
+        .sidebar-footer {
+            padding: 16px 12px;
+            border-top: 1px solid #1f2937;
+        }
+        .user-chip {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 10px; border-radius: 8px;
+            background: #1f2937;
+        }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: var(--red);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; color: #fff;
+            flex-shrink: 0;
+        }
+        .user-name { color: #f9fafb; font-size: 12.5px; font-weight: 600; flex: 1; }
+        .user-role { color: #6b7280; font-size: 10.5px; margin-top:2px; }
+        .btn-logout {
+            color: #6b7280; font-size: 15px; cursor: pointer;
+            background: none; border: none; padding: 0;
+            transition: color .15s;
+        }
+        .btn-logout:hover { color: #ef4444; }
+
+        .main-content {
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+        }
+        .topbar {
+            background: #fff;
+            padding: 14px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .topbar h2 {
+            font-size: 18px; font-weight: 700;
+            color: #111827; margin: 0;
+        }
+        .topbar .breadcrumb { font-size: 12px; color: #6b7280; margin: 0; }
+        .page-body { padding: 24px 28px; }
+
+        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05); }
+        .stat-card { background: #fff; border-radius: 12px; padding: 20px; }
+        .stat-card .stat-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .stat-card .stat-value { font-size: 24px; font-weight: 800; color: #111827; }
+        .stat-card .stat-label { font-size: 12px; color: #6b7280; font-weight: 500; }
+        .stat-card .stat-change { font-size: 11.5px; font-weight: 600; }
+
+        .flash-zone { padding: 0 28px; }
+        .alert { border-radius: 10px; font-size: 13.5px; border: none; }
+        .alert-success { background: #f0fdf4; color: #166534; }
+        .alert-danger  { background: #fef2f2; color: #991b1b; }
+        .alert-warning { background: #fffbeb; color: #92400e; }
+        .alert-info    { background: #eff6ff; color: #1e40af; }
+
+        .btn-red {
+            background: var(--red); color: #fff; border: none;
+            border-radius: 8px; font-weight: 600; font-size: 13px;
+            padding: 8px 16px; transition: background .15s;
+        }
+        .btn-red:hover { background: var(--red-dark); color: #fff; }
+        .btn-ghost {
+            background: #f3f4f6; color: #374151; border: none;
+            border-radius: 8px; font-weight: 600; font-size: 13px;
+            padding: 8px 16px; transition: background .15s;
+        }
+        .btn-ghost:hover { background: #e5e7eb; }
+
+        .form-control, .form-select {
+            border-radius: 8px; border: 1.5px solid #e5e7eb;
+            font-size: 13.5px; padding: 8px 12px;
+            transition: border-color .15s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+        }
+        .form-label { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+
+        .badge-pendente  { background:#fef9c3; color:#854d0e; font-size:11px; padding:4px 8px; border-radius:6px; font-weight:600; }
+        .badge-forno     { background:#fff7ed; color:#c2410c; font-size:11px; padding:4px 8px; border-radius:6px; font-weight:600; }
+        .badge-pronto    { background:#f0fdf4; color:#166534; font-size:11px; padding:4px 8px; border-radius:6px; font-weight:600; }
+        .badge-desconto  { background:#ede9fe; color:#6d28d9; font-size:10px; padding:3px 7px; border-radius:5px; font-weight:600; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+        {% block extra_style %}{% endblock %}
+
+        .cfg-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.45); z-index:2000;
+            align-items:center; justify-content:center;
+        }
+        .cfg-overlay.show-modal { display:flex; }
+        .cfg-box {
+            background:var(--card-bg,#fff); border-radius:16px;
+            width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+            overflow:hidden;
+        }
+        html.dark .cfg-box { background:#1e293b; }
+        .cfg-header {
+            background:#111827; padding:18px 24px;
+            display:flex; align-items:center; justify-content:space-between;
+        }
+        .cfg-header h5 { color:#fff; font-size:15px; font-weight:700; margin:0; }
+        .cfg-close { background:none; border:none; color:#9ca3af; font-size:20px; cursor:pointer; line-height:1; }
+        .cfg-close:hover { color:#fff; }
+        .cfg-body { padding:24px; }
+        .cfg-section { margin-bottom:22px; }
+        .cfg-section:last-child { margin-bottom:0; }
+        .cfg-label {
+            font-size:11px; font-weight:700; letter-spacing:.8px;
+            text-transform:uppercase; color:#9ca3af; margin-bottom:10px;
+        }
+        html.dark .cfg-label { color:#64748b; }
+
+        .toggle-switch {
+            position:relative;
+            flex: 0 0 44px;
+            width:44px; height:24px;
+        }
+        .toggle-switch input {
+            position:absolute; opacity:0;
+            width:0; height:0; margin:0;
+        }
+        .toggle-slider {
+            position:absolute; inset:0;
+            background:#d1d5db; border-radius:24px;
+            cursor:pointer; transition:.2s;
+        }
+        .toggle-slider:before {
+            content:''; position:absolute;
+            width:18px; height:18px; border-radius:50%;
+            background:#fff; left:3px; top:3px; transition:.2s;
+            box-shadow:0 1px 3px rgba(0,0,0,.2);
+        }
+        input:checked + .toggle-slider, input:checked ~ .toggle-slider { background:#dc2626; }
+        input:checked + .toggle-slider:before, input:checked ~ .toggle-slider:before { transform:translateX(20px); }
+
+        .lang-pills { display:flex; gap:8px; }
+        .lang-pill {
+            flex:1; text-align:center; padding:8px 6px;
+            border-radius:9px; font-size:12px; font-weight:600;
+            cursor:pointer; border:1.5px solid #e5e7eb;
+            background:#f9fafb; color:#6b7280;
+            text-decoration:none; transition:all .15s;
+        }
+        html.dark .lang-pill { background:#0f172a; border-color:#334155; color:#94a3b8; }
+        .lang-pill.active { background:#dc2626; color:#fff; border-color:#dc2626; }
+        .lang-pill:hover:not(.active) { border-color:#dc2626; color:#dc2626; }
+        html.dark .lang-pill:hover:not(.active) { border-color:#dc2626; color:#dc2626; }
+
+        .cfg-input-row { display:flex; align-items:center; gap:12px; }
+        .cfg-input-row label { flex:1; font-size:13.5px; font-weight:500; color:var(--text-primary,#111827); }
+        html.dark .cfg-input-row label { color:#f1f5f9; }
+        .cfg-input { width:110px; }
+    </style>
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+{% if session.usuario %}
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="logo-icon">🍕</div>
+        <h1>GB Pizzaria</h1>
+        <p>{{ t("login_sistema") }}</p>
+    </div>
+
+    <p class="sidebar-section">{{ t("nav_secao_menu") }}</p>
+    <nav class="sidebar-nav">
+        <a href="{{ url_for('dashboard') }}"
+           class="nav-link-sidebar {% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-grid-1x2"></i> {{ t("nav_painel") }}
+        </a>
+        <a href="{{ url_for('produtos') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['produtos','nova_pizza','nova_bebida','alternar_produto'] %}active{% endif %}">
+            <i class="bi bi-journal-text"></i> {{ t("nav_cardapio") }}
+        </a>
+        <a href="{{ url_for('combos') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['combos','novo_combo','alternar_combo','remover_combo'] %}active{% endif %}">
+            <i class="bi bi-gift"></i> {{ t("nav_combos") }}
+        </a>
+        <a href="{{ url_for('adicionais') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['adicionais','novo_adicional','alternar_adicional','remover_adicional'] %}active{% endif %}">
+            <i class="bi bi-stars"></i> {{ t("nav_adicionais") }}
+        </a>
+
+        {% if is_gerente() %}
+        <a href="{{ url_for('relatorios') }}"
+           class="nav-link-sidebar {% if request.endpoint == 'relatorios' %}active{% endif %}">
+            <i class="bi bi-bar-chart"></i> {{ t("nav_relatorios") }}
+        </a>
+        {% endif %}
+
+        <p class="sidebar-section" style="padding-left:0">{{ t("nav_secao_estoque") }}</p>
+        <a href="{{ url_for('estoque') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['estoque','ajustar_estoque','definir_minimo_estoque'] %}active{% endif %}">
+            <i class="bi bi-box-seam"></i> {{ t("nav_estoque") }}
+            {% if estoque_alertas and estoque_alertas > 0 %}
+            <span style="margin-left:auto;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:2px 7px;">{{ estoque_alertas }}</span>
+            {% endif %}
+        </a>
+        {% if is_gerente() %}
+        <a href="{{ url_for('compras') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['compras','nova_compra','compra_fardo'] %}active{% endif %}">
+            <i class="bi bi-cart-plus"></i> {{ t("nav_compras") }}
+        </a>
+        <a href="{{ url_for('fornecedores') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['fornecedores','novo_fornecedor','editar_fornecedor','alternar_fornecedor','remover_fornecedor','historico_fornecedor'] %}active{% endif %}">
+            <i class="bi bi-truck"></i> {{ t("nav_fornecedores") }}
+        </a>
+        <a href="{{ url_for('usuarios') }}"
+           class="nav-link-sidebar {% if request.endpoint in ['usuarios','alterar_perfil','remover_usuario'] %}active{% endif %}">
+            <i class="bi bi-people"></i> {{ t("nav_usuarios") }}
+        </a>
+        {% endif %}
+
+        <p class="sidebar-section" style="padding-left:0">{{ t("nav_secao_caixa") }}</p>
+        <form action="{{ url_for('fechar_caixa') }}" method="POST"
+              onsubmit="return confirm('{{ t('nav_fechar_caixa_confirm') }}')">
+            <button type="submit" class="nav-link-sidebar w-100 border-0 text-start"
+                    style="cursor:pointer;">
+                <i class="bi bi-lock"></i> {{ t("nav_fechar_caixa") }}
+            </button>
+        </form>
+    </nav>
+
+<div class="sidebar-footer">
+        <div class="user-chip">
+            <div class="user-avatar">{{ session.usuario[0]|upper }}</div>
+            <div>
+                <div class="user-name">{{ session.usuario }}</div>
+                <div class="user-role">
+                    {% if is_gerente() %}
+                        <span style="background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:4px;font-weight:700;">👑 {{ t("perfil_gerente") }}</span>
+                    {% else %}
+                        <span style="background:#eff6ff;color:#1e40af;padding:1px 6px;border-radius:4px;font-weight:700;">👤 {{ t("perfil_funcionario") }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="btn-logout" title="{{ t('nav_sair') }}">
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</aside>
+
+<div class="main-content">
+    <div class="topbar">
+        <div>
+            <h2>{% block page_title %}Painel{% endblock %}</h2>
+            <div class="breadcrumb">{% block breadcrumb %}GB Pizzaria{% endblock %}</div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            {% block topbar_actions %}{% endblock %}
+            <button onclick="document.getElementById('modalConfiguracoes').classList.add('show-modal')"
+                style="background:none;border:1.5px solid var(--border-color,#e5e7eb);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-secondary,#6b7280);display:flex;align-items:center;gap:6px;"
+                title="{{ t('cfg_titulo') }}">
+                <i class="bi bi-gear"></i> <span style="font-size:12px;">{{ t("cfg_btn_config") }}</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="flash-zone mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}{% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{% if cat == 'success' %}check-circle{% elif cat == 'danger' %}x-circle{% elif cat == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}{% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="page-body">
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+{% else %}
+{% block fullpage %}{% endblock %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function(){
+    if(localStorage.getItem('dark')==='1') {
+        document.documentElement.classList.add('dark');
+    }
+})();
+function toggleDark(){
+    const on = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('dark', on ? '1' : '0');
+    const icon = document.getElementById('darkIcon');
+    if(icon) icon.textContent = on ? '☀️' : '🌙';
+}
+window.addEventListener('DOMContentLoaded',function(){
+    const isDark = document.documentElement.classList.contains('dark');
+    const icon = document.getElementById('darkIcon');
+    if(icon) icon.textContent = isDark ? '☀️' : '🌙';
+});
+
+/* ── Tradução das mensagens nativas de validação HTML5 ─────── */
+(function(){
+    const MSGS = {
+        pt: {
+            valueMissing: 'Preencha este campo.',
+            typeMismatch:  'Valor inválido.',
+            patternMismatch:'Formato inválido.',
+            tooShort:      'Muito curto.',
+            tooLong:       'Muito longo.',
+            rangeUnderflow:'Valor muito baixo.',
+            rangeOverflow: 'Valor muito alto.',
+            stepMismatch:  'Valor inválido.'
+        },
+        en: {
+            valueMissing: 'Please fill out this field.',
+            typeMismatch:  'Please enter a valid value.',
+            patternMismatch:'Please match the requested format.',
+            tooShort:      'Too short.',
+            tooLong:       'Too long.',
+            rangeUnderflow:'Value too low.',
+            rangeOverflow: 'Value too high.',
+            stepMismatch:  'Invalid value.'
+        },
+        es: {
+            valueMissing: 'Por favor, rellene este campo.',
+            typeMismatch:  'Por favor, introduce un valor válido.',
+            patternMismatch:'Por favor, coincide con el formato solicitado.',
+            tooShort:      'Demasiado corto.',
+            tooLong:       'Demasiado largo.',
+            rangeUnderflow:'Valor demasiado bajo.',
+            rangeOverflow: 'Valor demasiado alto.',
+            stepMismatch:  'Valor no válido.'
+        }
+    };
+    const LANG = "{{ get_lang() }}";
+    const M = MSGS[LANG] || MSGS.pt;
+
+    function traducirValidade(input) {
+        input.setCustomValidity('');
+        if (!input.validity.valid) {
+            if (input.validity.valueMissing)        input.setCustomValidity(M.valueMissing);
+            else if (input.validity.typeMismatch)   input.setCustomValidity(M.typeMismatch);
+            else if (input.validity.patternMismatch)input.setCustomValidity(M.patternMismatch);
+            else if (input.validity.tooShort)       input.setCustomValidity(M.tooShort);
+            else if (input.validity.tooLong)        input.setCustomValidity(M.tooLong);
+            else if (input.validity.rangeUnderflow) input.setCustomValidity(M.rangeUnderflow);
+            else if (input.validity.rangeOverflow)  input.setCustomValidity(M.rangeOverflow);
+            else if (input.validity.stepMismatch)   input.setCustomValidity(M.stepMismatch);
+        }
+    }
+    document.addEventListener('invalid', function(e){ traducirValidade(e.target); }, true);
+    document.addEventListener('input',   function(e){ e.target.setCustomValidity(''); }, true);
+    document.addEventListener('change',  function(e){ e.target.setCustomValidity(''); }, true);
+})();
+</script>
+{% block scripts %}{% endblock %}
+
+{% if session.usuario %}
+<div class="cfg-overlay" id="modalConfiguracoes" onclick="fecharCfgSeClicouFora(event)">
+    <div class="cfg-box">
+        <div class="cfg-header">
+            <h5><i class="bi bi-gear me-2"></i>{{ t("cfg_titulo") }}</h5>
+            <button class="cfg-close" onclick="document.getElementById('modalConfiguracoes').classList.remove('show-modal')">&times;</button>
+        </div>
+        <div class="cfg-body">
+
+            <div class="cfg-section">
+                <div class="cfg-label">{{ t("cfg_aparencia") }}</div>
+                <div class="cfg-input-row">
+                    <label>{{ t("cfg_modo_escuro") }}</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="darkToggleCfg" onchange="toggleDark(this.checked)">
+                        <label for="darkToggleCfg" class="toggle-slider"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cfg-section">
+                <div class="cfg-label">{{ t("cfg_idioma") }}</div>
+                <div class="lang-pills">
+                    {% for lang_code, flag, nome in [("pt","🇧🇷","Português"),("en","🇺🇸","English"),("es","🇪🇸","Español")] %}
+                    <a href="{{ url_for('mudar_idioma', lang=lang_code) }}"
+                       class="lang-pill {% if get_lang() == lang_code %}active{% endif %}">
+                        {{ flag }}<br><span style="font-size:10px;">{{ nome }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="cfg-section">
+                <div class="cfg-label">{{ t("cfg_padroes_pedido") }}</div>
+                <div class="cfg-input-row mb-2">
+                    <label>{{ t("cfg_taxa_entrega_padrao") }}</label>
+                    <input type="number" step="0.50" min="0" id="cfgTaxaEntrega"
+                           class="form-control cfg-input"
+                           value="{{ session.get('cfg_taxa_entrega', '0.00') }}"
+                           onchange="salvarCfg('cfg_taxa_entrega', this.value)">
+                </div>
+                <div class="cfg-input-row">
+                    <label>{{ t("cfg_pagamento_padrao") }}</label>
+                    <select id="cfgPagamento" class="form-select cfg-input"
+                            onchange="salvarCfg('cfg_pagamento', this.value)">
+                        <option value="Dinheiro" {% if session.get('cfg_pagamento','Dinheiro') == 'Dinheiro' %}selected{% endif %}>{{ t("geral_dinheiro") }}</option>
+                        <option value="PIX" {% if session.get('cfg_pagamento','Dinheiro') == 'PIX' %}selected{% endif %}>{{ t("geral_pix") }}</option>
+                        <option value="Cartão de Crédito" {% if session.get('cfg_pagamento','Dinheiro') == 'Cartão de Crédito' %}selected{% endif %}>{{ t("geral_credito") }}</option>
+                        <option value="Cartão de Débito" {% if session.get('cfg_pagamento','Dinheiro') == 'Cartão de Débito' %}selected{% endif %}>{{ t("geral_debito") }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="cfg-section">
+                <div class="cfg-label">{{ t("cfg_notificacoes") }}</div>
+                <div class="cfg-input-row">
+                    <label>{{ t("cfg_som_novo_pedido") }}</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="cfgSom" onchange="salvarCfgLocal('cfg_som', this.checked)">
+                        <label for="cfgSom" class="toggle-slider"></label>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+(function(){
+    const isDark = localStorage.getItem('dark') === '1';
+    if(isDark) document.documentElement.classList.add('dark');
+    window.addEventListener('DOMContentLoaded', function(){
+        const cb = document.getElementById('darkToggleCfg');
+        if(cb) cb.checked = isDark;
+    });
+})();
+
+function toggleDark(on){
+    if(on === undefined) on = !document.documentElement.classList.contains('dark');
+    document.documentElement.classList.toggle('dark', on);
+    localStorage.setItem('dark', on ? '1' : '0');
+    const cb = document.getElementById('darkToggleCfg');
+    if(cb) cb.checked = on;
+}
+
+function fecharCfgSeClicouFora(e){
+    if(e.target === document.getElementById('modalConfiguracoes'))
+        document.getElementById('modalConfiguracoes').classList.remove('show-modal');
+}
+document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') document.getElementById('modalConfiguracoes')?.classList.remove('show-modal');
+});
+
+function salvarCfg(chave, valor){
+    fetch('/configuracoes/salvar', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({chave, valor})
+    });
+}
+
+function salvarCfgLocal(chave, valor){
+    localStorage.setItem(chave, valor ? '1' : '0');
+}
+
+window.addEventListener('DOMContentLoaded', function(){
+    const som = document.getElementById('cfgSom');
+    if(som) som.checked = localStorage.getItem('cfg_som') === '1';
+});
+</script>
+</body>
+</html>

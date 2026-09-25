@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}GB Pizzaria — Novo Funcionário{% endblock %}
+
+{% block fullpage %}
+<div style="min-height:100vh;background:linear-gradient(135deg,#111827 0%,#1f2937 50%,#111827 100%);display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div style="width:100%;max-width:460px;">
+
+        <div class="text-center mb-4">
+            <div style="width:64px;height:64px;background:#dc2626;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;">🍕</div>
+            <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0;">GB Pizzaria</h1>
+            <p style="color:#6b7280;font-size:13px;margin:4px 0 0;">{{ t("cadastro_subtitulo") }}</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}{% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }} mb-2" style="border-radius:10px;font-size:13px;">
+                <i class="bi bi-{% if cat == 'danger' %}x-circle{% else %}check-circle{% endif %} me-2"></i>{{ msg }}
+            </div>
+          {% endfor %}{% endif %}
+        {% endwith %}
+
+        <div style="background:#1f2937;border-radius:16px;padding:28px;border:1px solid #374151;">
+            <h2 style="color:#f9fafb;font-size:16px;font-weight:700;margin:0 0 20px;">{{ t("cadastro_titulo") }}</h2>
+
+            <form method="POST" action="{{ url_for('cadastrar_funcionario') }}" novalidate>
+
+                <!-- Usuário -->
+                <div class="mb-3">
+                    <label style="color:#9ca3af;font-size:11.5px;font-weight:600;display:block;margin-bottom:6px;letter-spacing:.5px;">{{ t("login_usuario")|upper }}</label>
+                    <div style="position:relative;">
+                        <i class="bi bi-person" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:15px;pointer-events:none;"></i>
+                        <input type="text" name="usuario" required
+                               value="{{ form_usuario or '' }}"
+                               placeholder="Nome de usuário para login"
+                               style="width:100%;background:#111827;border:1.5px solid #374151;border-radius:9px;color:#f9fafb;padding:10px 12px 10px 36px;font-size:13.5px;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#374151'">
+                    </div>
+                </div>
+
+                <!-- CPF -->
+                <div class="mb-3">
+                    <label style="color:#9ca3af;font-size:11.5px;font-weight:600;display:block;margin-bottom:6px;letter-spacing:.5px;">CPF</label>
+                    <div style="position:relative;">
+                        <i class="bi bi-card-text" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:15px;pointer-events:none;"></i>
+                        <input type="text" name="cpf" id="cpfInput" required maxlength="14"
+                               value="{{ form_cpf or '' }}"
+                               placeholder="000.000.000-00"
+                               oninput="mascararCPF(this)"
+                               style="width:100%;background:#111827;border:1.5px solid #374151;border-radius:9px;color:#f9fafb;padding:10px 40px 10px 36px;font-size:13.5px;outline:none;box-sizing:border-box;font-family:monospace;"
+                               onfocus="this.style.borderColor='#dc2626'" onblur="validarCPFInline(this)">
+                        <span id="cpfStatus" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:15px;display:none;"></span>
+                    </div>
+                    <div id="cpfMsg" style="font-size:11.5px;margin-top:5px;display:none;"></div>
+                </div>
+
+                <!-- E-mail -->
+                <div class="mb-3">
+                    <label style="color:#9ca3af;font-size:11.5px;font-weight:600;display:block;margin-bottom:6px;letter-spacing:.5px;">E-MAIL</label>
+                    <div style="position:relative;">
+                        <i class="bi bi-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:15px;pointer-events:none;"></i>
+                        <input type="email" name="email" id="emailInput" required
+                               value="{{ form_email or '' }}"
+                               placeholder="funcionario@email.com"
+                               style="width:100%;background:#111827;border:1.5px solid #374151;border-radius:9px;color:#f9fafb;padding:10px 40px 10px 36px;font-size:13.5px;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#dc2626'" onblur="validarEmailInline(this)">
+                        <span id="emailStatus" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:15px;display:none;"></span>
+                    </div>
+                    <div id="emailMsg" style="font-size:11.5px;margin-top:5px;display:none;"></div>
+                </div>
+
+                <!-- Senha -->
+                <div class="mb-4">
+                    <label style="color:#9ca3af;font-size:11.5px;font-weight:600;display:block;margin-bottom:6px;letter-spacing:.5px;">{{ t("login_senha")|upper }}</label>
+                    <div style="position:relative;">
+                        <i class="bi bi-lock" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:15px;pointer-events:none;"></i>
+                        <input type="password" name="senha" id="senhaInput" required
+                               placeholder="Crie uma senha segura"
+                               style="width:100%;background:#111827;border:1.5px solid #374151;border-radius:9px;color:#f9fafb;padding:10px 44px 10px 36px;font-size:13.5px;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='#374151'">
+                        <button type="button" onclick="toggleSenha()" aria-label="Mostrar senha"
+                            style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#6b7280;cursor:pointer;padding:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;line-height:0;">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btnSubmit"
+                    style="width:100%;background:#dc2626;color:#fff;border:none;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">
+                    {{ t("cadastro_btn") }}
+                </button>
+            </form>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('login') }}" style="color:#6b7280;font-size:12.5px;text-decoration:none;">
+                {{ t("cadastro_ja_tem") }} <span style="color:#dc2626;font-weight:600;">{{ t("cadastro_login_link") }}</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ── Máscara CPF ──────────────────────────────── */
+function mascararCPF(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 9)      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/,        '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,                '$1.$2');
+    input.value = v;
+}
+
+/* ── Algoritmo CPF (client-side) ──────────────── */
+function cpfValido(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf[i-1]) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf[9])) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf[i-1]) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    return resto === parseInt(cpf[10]);
+}
+
+function validarCPFInline(input) {
+    const status = document.getElementById('cpfStatus');
+    const msg    = document.getElementById('cpfMsg');
+    const digits = input.value.replace(/\D/g,'');
+    if (!digits) { status.style.display='none'; msg.style.display='none'; input.style.borderColor='#374151'; return; }
+    if (cpfValido(input.value)) {
+        status.textContent = '✅'; status.style.display = 'inline';
+        msg.style.display = 'none';
+        input.style.borderColor = '#16a34a';
+    } else {
+        status.textContent = '❌'; status.style.display = 'inline';
+        msg.style.display = 'block';
+        msg.style.color = '#f87171';
+        msg.textContent = 'CPF inválido — verifique os números digitados.';
+        input.style.borderColor = '#ef4444';
+    }
+}
+
+/* ── Validação e-mail (client-side) ───────────── */
+function emailValido(email) {
+    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email.trim());
+}
+
+function validarEmailInline(input) {
+    const status = document.getElementById('emailStatus');
+    const msg    = document.getElementById('emailMsg');
+    if (!input.value) { status.style.display='none'; msg.style.display='none'; input.style.borderColor='#374151'; return; }
+    if (emailValido(input.value)) {
+        status.textContent = '✅'; status.style.display = 'inline';
+        msg.style.display = 'none';
+        input.style.borderColor = '#16a34a';
+    } else {
+        status.textContent = '❌'; status.style.display = 'inline';
+        msg.style.display = 'block';
+        msg.style.color = '#f87171';
+        msg.textContent = 'E-mail inválido — use o formato nome@dominio.com.';
+        input.style.borderColor = '#ef4444';
+    }
+}
+
+/* ── Mostrar/ocultar senha ────────────────────── */
+function toggleSenha() {
+    const i = document.getElementById('senhaInput');
+    const e = document.getElementById('eyeIcon');
+    if (i.type === 'password') {
+        i.type = 'text';
+        e.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+        i.type = 'password';
+        e.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+}
+</script>
+{% endblock %}

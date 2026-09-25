@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav_adicionais") }} — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("adic_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("adic_subtitulo") }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    html.dark .adic-badge-ativo {
+        background: #052e16 !important;
+        color: #86efac !important;
+    }
+    html.dark .adic-badge-inativo {
+        background: #1e293b !important;
+        color: #94a3b8 !important;
+    }
+    html.dark .adic-btn-toggle-on {
+        background: #450a0a !important;
+        color: #fca5a5 !important;
+    }
+    html.dark .adic-btn-toggle-off {
+        background: #052e16 !important;
+        color: #86efac !important;
+    }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn-red" data-bs-toggle="modal" data-bs-target="#modalNovoAdic">
+    <i class="bi bi-plus-lg me-1"></i> {{ t("adic_btn_novo") }}
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;">{{ t("adic_col_nome")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("adic_col_preco")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("adic_col_aplica")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("adic_col_status")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("adic_col_acoes")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in adicionais %}
+                    <tr class="table-row-item" {% if not a.ativo %}style="opacity:.45;"{% endif %}>
+                        <td style="padding:14px 16px;font-weight:600;">{{ a.nome }}</td>
+                        <td style="padding:14px 16px;text-align:center;color:#dc2626;font-weight:700;">R$ {{ "%.2f"|format(a.preco) }}</td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            {% if a.aplica == 'pizza' %}{{ t("adic_aplica_pizza") }}
+                            {% elif a.aplica == 'bebida' %}{{ t("adic_aplica_bebida") }}
+                            {% else %}{{ t("adic_aplica_ambos") }}{% endif %}
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            {% if a.ativo %}
+                            <span class="adic-badge-ativo" style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("adic_status_ativo") }}</span>
+                            {% else %}
+                            <span class="adic-badge-inativo" style="background:#f3f4f6;color:#9ca3af;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("adic_status_inativo") }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            <form method="POST" action="{{ url_for('alternar_adicional', adic_id=a.id) }}" style="display:inline;">
+                                <button type="submit"
+                                        class="{% if a.ativo %}adic-btn-toggle-on{% else %}adic-btn-toggle-off{% endif %}"
+                                        style="border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:{% if a.ativo %}#fef2f2{% else %}#f0fdf4{% endif %};color:{% if a.ativo %}#dc2626{% else %}#16a34a{% endif %};">
+                                    {{ t('adic_btn_desabilitar') if a.ativo else t('adic_btn_habilitar') }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('remover_adicional', adic_id=a.id) }}" style="display:inline;" onsubmit="return confirm('Remover {{ a.nome }}?');">
+                                <button type="submit" style="border:none;background:#f3f4f6;color:#6b7280;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center py-5" style="color:#9ca3af;">{{ t("adic_sem_registros") }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVO ADICIONAL -->
+<div class="modal fade" id="modalNovoAdic" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" style="color:#fff;font-size:15px;font-weight:700;">✨ {{ t("adic_modal_novo") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('novo_adicional') }}">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("adic_modal_nome") }}</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Ex: Borda Catupiry">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("adic_modal_preco") }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" step="0.01" min="0.01" name="preco" class="form-control" required placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("adic_modal_aplica") }}</label>
+                        <select name="aplica" class="form-select">
+                            <option value="pizza">{{ t("adic_aplica_pizza") }}</option>
+                            <option value="bebida">{{ t("adic_aplica_bebida") }}</option>
+                            <option value="ambos" selected>{{ t("adic_aplica_ambos") }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("adic_modal_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("adic_modal_adicionar") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

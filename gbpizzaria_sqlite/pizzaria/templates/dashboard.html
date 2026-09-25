@@ -1,0 +1,901 @@
+{% extends "base.html" %}
+{% block title %}Painel — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("dash_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("dash_subtitulo") }}{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn-red" data-bs-toggle="offcanvas" data-bs-target="#novoPedidoPanel">
+    <i class="bi bi-plus-lg me-1"></i> {{ t("dash_novo_pedido") }}
+</button>
+{% endblock %}
+
+{% block extra_style %}
+/* ── KANBAN ─────────────────────── */
+.kanban-col {
+    background:#f9fafb; border-radius:12px;
+    border:1.5px solid #e5e7eb; padding:12px;
+    min-height:400px;
+}
+.kanban-header {
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:700;
+    padding:8px 4px 12px; margin-bottom:4px;
+    border-bottom:2px solid #e5e7eb;
+}
+.kanban-dot { width:9px;height:9px;border-radius:50%; }
+.order-card {
+    background:#fff;border-radius:10px;
+    border:1.5px solid #e5e7eb;padding:14px;
+    margin-bottom:10px;cursor:default;
+    transition:box-shadow .15s;
+}
+.order-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
+.order-card .order-id { font-size:11px;color:#9ca3af;font-weight:600; }
+.order-card .order-client { font-size:13.5px;font-weight:700;color:#111827; }
+.order-card .order-item { font-size:12px;color:#6b7280;padding:2px 0; }
+.order-card .order-total { font-size:14px;font-weight:800;color:#dc2626; }
+.order-card .order-delivery { font-size:11.5px;color:#6b7280;font-weight:500; }
+
+/* ── OFFCANVAS PEDIDO ─────────────── */
+.offcanvas { width:420px !important; }
+.offcanvas-header { background:#111827; padding:20px 24px; }
+.offcanvas-title { color:#fff;font-size:15px;font-weight:700; }
+.btn-close-white { filter:invert(1) grayscale(1); }
+.item-cart-line {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px;border-radius:8px;background:#f9fafb;
+    border:1px solid #e5e7eb;margin-bottom:6px;font-size:13px;
+}
+.item-badge {
+    font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;
+}
+.badge-pizza { background:#fef9c3;color:#854d0e; }
+.badge-bebida { background:#eff6ff;color:#1e40af; }
+
+/* ── ENTREGA STATUS ─────────────── */
+.entrega-badge {
+    display:inline-flex;align-items:center;gap:4px;
+    border-radius:20px;padding:3px 9px;font-size:10.5px;font-weight:600;
+}
+.entrega-preparando { background:#fef9c3;color:#854d0e; }
+.entrega-saiu       { background:#dbeafe;color:#1e40af; }
+.entrega-entregue   { background:#dcfce7;color:#166534; }
+
+/* ── ADICIONAIS (light) ─────────── */
+.adic-chip {
+    display:flex; align-items:center; gap:6px;
+    background:#fff;
+    border:1.5px solid #e5e7eb;
+    border-radius:8px;
+    padding:5px 10px;
+    font-size:12px;
+    color:#374151;
+    cursor:pointer;
+    user-select:none;
+    transition:all .15s;
+}
+.adic-chip:hover { border-color:#dc2626; }
+.adic-chip input { margin:0; cursor:pointer; }
+.adic-chip .adic-nome  { color:#374151; font-weight:500; }
+.adic-chip .adic-preco { color:#dc2626; font-weight:700; }
+
+/* ── ADICIONAIS (dark) ──────────── */
+html.dark .adic-chip {
+    background:#0f172a !important;
+    border-color:#334155 !important;
+    color:#e2e8f0 !important;
+}
+html.dark .adic-chip:hover { border-color:#dc2626 !important; }
+html.dark .adic-chip .adic-nome  { color:#e2e8f0 !important; }
+html.dark .adic-chip .adic-preco { color:#f87171 !important; }
+html.dark .adic-chip input { accent-color:#dc2626; }
+{% endblock %}
+
+{% block content %}
+
+<!-- ── STATS ─────────────────────────────────────────────────── -->
+{% set total = vendas|length %}
+{% set pendentes = vendas|selectattr('status','equalto','Pendente')|list|length %}
+{% set forno = vendas|selectattr('status','equalto','No forno')|list|length %}
+{% set prontos = vendas|selectattr('status','equalto','Pronto')|list|length %}
+{% set faturamento = vendas|sum(attribute='preco_final') %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("dash_stat_fila") }}</div>
+                    <div class="stat-value">{{ total }}</div>
+                </div>
+                <div class="stat-icon" style="background:#fef2f2;">🧾</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("dash_stat_aguardando") }}</div>
+                    <div class="stat-value">{{ pendentes }}</div>
+                </div>
+                <div class="stat-icon" style="background:#fef9c3;">⏳</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("dash_stat_forno") }}</div>
+                    <div class="stat-value">{{ forno }}</div>
+                </div>
+                <div class="stat-icon" style="background:#fff7ed;">🔥</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("dash_stat_faturamento") }}</div>
+                    <div class="stat-value" style="font-size:20px;">R$ {{ "%.0f"|format(faturamento) }}</div>
+                </div>
+                <div class="stat-icon" style="background:#f0fdf4;">💰</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── KANBAN ─────────────────────────────────────────────────── -->
+<div class="row g-3">
+
+    <!-- PENDENTES -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-col">
+            <div class="kanban-header">
+                <div class="kanban-dot" style="background:#f59e0b;"></div>
+                {{ t("dash_col_aguardando") }}
+                <span class="ms-auto badge" style="background:#fef9c3;color:#854d0e;">{{ pendentes }}</span>
+            </div>
+            {% for v in vendas if v.status == 'Pendente' %}
+            <div class="order-card">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="order-id">{{ t("dash_pedido") }} #{{ v.id }}</span>
+                    <span class="badge-pendente">⏳ {{ t("status_pendente") }}</span>
+                </div>
+                <div class="order-client mb-1">{{ v.cliente }}</div>
+                {% if v.teve_desconto %}<span class="badge-desconto mb-1 d-inline-block">{{ t("dash_badge_desconto") }}</span>{% endif %}
+                {% if v.combo_id %}<span class="badge-desconto mb-1 d-inline-block ms-1">🎁 Combo</span>{% endif %}
+                <div class="mb-2">
+                    {% for item in v.itens %}
+                    <div class="order-item">
+                        • {{ item.quantidade }}x {{ item.nome }}
+                        {% if item.adicionais %}
+                            <span style="color:#c2410c;">(+{{ item.adicionais|length }} adic.)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="order-delivery">
+                        {% if v.tipo_entrega == 'Entrega' %}🛵 {{ t("dash_entrega") }}{% else %}🏪 {{ t("dash_balcao") }}{% endif %}
+                    </span>
+                    <span class="order-total">R$ {{ "%.2f"|format(v.preco_final) }}</span>
+                </div>
+                {% if v.tipo_entrega == 'Entrega' and v.endereco %}
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">📍 {{ v.endereco }}</div>
+                {% endif %}
+                <hr class="my-2" style="border-color:#f3f4f6;">
+                {% if v.observacoes %}
+                <div class="obs-badge" style="font-size:11.5px;border-radius:6px;padding:5px 8px;margin-bottom:8px;background:#fefce8;border:1px solid #fef08a;color:#854d0e;">
+                    📝 {{ v.observacoes }}
+                </div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <form action="{{ url_for('atualizar_status', venda_id=v.id) }}" method="POST" style="flex:1;">
+                        <button type="submit" class="btn-red w-100" style="font-size:12px;padding:7px;">
+                            <i class="bi bi-fire me-1"></i>{{ t("dash_col_forno") }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('comanda', venda_id=v.id) }}" target="_blank"
+                       style="display:flex;align-items:center;padding:7px 10px;background:#f0fdf4;color:#166534;border:1.5px solid #bbf7d0;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">
+                        🖨️
+                    </a>
+                    <button type="button"
+                        style="padding:7px 10px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;font-size:12px;cursor:pointer;"
+                        onclick="abrirCancelar({{ v.id }})">✕</button>
+                </div>
+            </div>
+            {% else %}
+            {% if pendentes == 0 %}
+            <div class="text-center py-5" style="color:#d1d5db;">
+                <div style="font-size:32px;">✅</div>
+                <div style="font-size:12.5px;margin-top:8px;">{{ t("dash_vazio_aguardando") }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- NO FORNO -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-col">
+            <div class="kanban-header">
+                <div class="kanban-dot" style="background:#f97316;"></div>
+                {{ t("dash_col_forno") }}
+                <span class="ms-auto badge" style="background:#fff7ed;color:#c2410c;">{{ forno }}</span>
+            </div>
+            {% for v in vendas if v.status == 'No forno' %}
+            <div class="order-card" style="border-color:#fed7aa;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="order-id">{{ t("dash_pedido") }} #{{ v.id }}</span>
+                    <span class="badge-forno">🔥 {{ t("status_forno") }}</span>
+                </div>
+                <div class="order-client mb-1">{{ v.cliente }}</div>
+                {% if v.teve_desconto %}<span class="badge-desconto mb-1 d-inline-block">{{ t("dash_badge_desconto") }}</span>{% endif %}
+                {% if v.combo_id %}<span class="badge-desconto mb-1 d-inline-block ms-1">🎁 Combo</span>{% endif %}
+                <div class="mb-2">
+                    {% for item in v.itens %}
+                    <div class="order-item">
+                        • {{ item.quantidade }}x {{ item.nome }}
+                        {% if item.adicionais %}
+                            <span style="color:#c2410c;">(+{{ item.adicionais|length }} adic.)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="order-delivery">
+                        {% if v.tipo_entrega == 'Entrega' %}🛵 {{ t("dash_entrega") }}{% else %}🏪 {{ t("dash_balcao") }}{% endif %}
+                    </span>
+                    <span class="order-total">R$ {{ "%.2f"|format(v.preco_final) }}</span>
+                </div>
+                {% if v.tipo_entrega == 'Entrega' and v.endereco %}
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">📍 {{ v.endereco }}</div>
+                {% endif %}
+                <hr class="my-2" style="border-color:#f3f4f6;">
+                {% if v.observacoes %}
+                <div class="obs-badge" style="font-size:11.5px;border-radius:6px;padding:5px 8px;margin-bottom:8px;background:#fefce8;border:1px solid #fef08a;color:#854d0e;">
+                    📝 {{ v.observacoes }}
+                </div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <form action="{{ url_for('atualizar_status', venda_id=v.id) }}" method="POST" style="flex:1;">
+                        <button type="submit" style="width:100%;background:#f97316;color:#fff;border:none;border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;">
+                            <i class="bi bi-check-lg me-1"></i>{{ t("dash_btn_pronto") }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('comanda', venda_id=v.id) }}" target="_blank"
+                       style="display:flex;align-items:center;padding:7px 10px;background:#f0fdf4;color:#166534;border:1.5px solid #bbf7d0;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;">
+                        🖨️
+                    </a>
+                    <button type="button"
+                        style="padding:7px 10px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;font-size:12px;cursor:pointer;"
+                        onclick="abrirCancelar({{ v.id }})">✕</button>
+                </div>
+            </div>
+            {% else %}
+            {% if forno == 0 %}
+            <div class="text-center py-5" style="color:#d1d5db;">
+                <div style="font-size:32px;">🍕</div>
+                <div style="font-size:12.5px;margin-top:8px;">{{ t("dash_vazio_forno") }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- PRONTOS -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-col">
+            <div class="kanban-header">
+                <div class="kanban-dot" style="background:#22c55e;"></div>
+                {{ t("dash_col_prontos") }}
+                <span class="ms-auto badge" style="background:#f0fdf4;color:#166534;">{{ prontos }}</span>
+            </div>
+            {% for v in vendas if v.status == 'Pronto' %}
+            <div class="order-card" style="border-color:#bbf7d0;">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="order-id">{{ t("dash_pedido") }} #{{ v.id }}</span>
+                    <span class="badge-pronto">✅ {{ t("status_pronto") }}</span>
+                </div>
+                <div class="order-client mb-1">{{ v.cliente }}</div>
+                {% if v.teve_desconto %}<span class="badge-desconto mb-1 d-inline-block">{{ t("dash_badge_desconto") }}</span>{% endif %}
+                {% if v.combo_id %}<span class="badge-desconto mb-1 d-inline-block ms-1">🎁 Combo</span>{% endif %}
+                <div class="mb-2">
+                    {% for item in v.itens %}
+                    <div class="order-item">
+                        • {{ item.quantidade }}x {{ item.nome }}
+                        {% if item.adicionais %}
+                            <span style="color:#c2410c;">(+{{ item.adicionais|length }} adic.)</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="order-delivery">
+                        {% if v.tipo_entrega == 'Entrega' %}🛵 {{ t("dash_entrega") }}{% else %}🏪 {{ t("dash_balcao") }}{% endif %}
+                    </span>
+                    <span class="order-total">R$ {{ "%.2f"|format(v.preco_final) }}</span>
+                </div>
+                {% if v.tipo_entrega == 'Entrega' and v.endereco %}
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;margin-bottom:8px;">📍 {{ v.endereco }}</div>
+                {% endif %}
+                {% if v.observacoes %}
+                <div class="obs-badge" style="font-size:11.5px;border-radius:6px;padding:5px 8px;margin-bottom:8px;background:#fefce8;border:1px solid #fef08a;color:#854d0e;">
+                    📝 {{ v.observacoes }}
+                </div>
+                {% endif %}
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('comanda', venda_id=v.id) }}" target="_blank"
+                       style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#f0fdf4;color:#166534;border:1.5px solid #bbf7d0;border-radius:8px;padding:7px;font-size:12px;font-weight:600;text-decoration:none;">
+                        🖨️ {{ t("dash_btn_imprimir") }}
+                    </a>
+                    <a href="{{ url_for('gerar_nota', venda_id=v.id) }}"
+                       style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#eff6ff;color:#1e40af;border:1.5px solid #bfdbfe;border-radius:8px;padding:7px;font-size:12px;font-weight:600;text-decoration:none;">
+                        📄 {{ t("dash_btn_pdf") }}
+                    </a>
+                </div>
+
+                <!-- #7 — Delivery tracking -->
+                {% if v.tipo_entrega == 'Entrega' %}
+                <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;">
+                    <span class="entrega-badge entrega-{{ v.entrega_status }}">
+                        {% if v.entrega_status == 'preparando' %}🍕 Preparando
+                        {% elif v.entrega_status == 'saiu' %}🛵 Saiu para entrega
+                        {% else %}✅ Entregue{% endif %}
+                    </span>
+                    {% if v.entrega_motoboy %}
+                    <span style="font-size:10.5px;color:#6b7280;">{{ v.entrega_motoboy }}</span>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <a href="{{ url_for('rastreio_entrega', venda_id=v.id) }}" target="_blank"
+                       style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:8px;padding:7px;font-size:12px;font-weight:600;text-decoration:none;">
+                        🔗 Rastreio
+                    </a>
+                    {% if v.entrega_status != 'entregue' %}
+                    <form action="{{ url_for('avancar_entrega', venda_id=v.id) }}" method="POST" style="flex:1;">
+                        <button type="submit" style="width:100%;background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;">
+                            {% if v.entrega_status == 'preparando' %}📤 Saiu p/ entrega
+                            {% else %}✅ Marcar entregue{% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if v.cliente and v.cliente != '—' %}
+                <a href="{{ url_for('historico_cliente', nome=v.cliente) }}" target="_blank"
+                   style="display:block;text-align:center;margin-top:6px;font-size:11.5px;color:#6b7280;text-decoration:none;">
+                    🕐 {{ t("dash_btn_historico") }} {{ v.cliente }}
+                </a>
+                {% endif %}
+            </div>
+            {% else %}
+            {% if prontos == 0 %}
+            <div class="text-center py-5" style="color:#d1d5db;">
+                <div style="font-size:32px;">🎉</div>
+                <div style="font-size:12.5px;margin-top:8px;">{{ t("dash_vazio_prontos") }}</div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- ── OFFCANVAS NOVO PEDIDO ──────────────────────────────────── -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="novoPedidoPanel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title"><i class="bi bi-bag-plus me-2"></i>{{ t("pedido_titulo") }}</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" style="padding:20px;">
+
+        <!-- Seletor de item -->
+        <div class="dk-box" style="border-radius:10px;padding:14px;margin-bottom:16px;background:#f9fafb;border:1.5px solid #e5e7eb;">
+            <div class="form-label mb-2" style="font-size:11px;color:#6b7280;">{{ t("pedido_tipo")|upper }} {{ t("geral_item") }}</div>
+            <div class="row g-2">
+                <div class="col-5">
+                    <label class="form-label">{{ t("pedido_tipo") }}</label>
+                    <select id="item_tipo" class="form-select form-select-sm" onchange="alternarVisaoCardapio()">
+                        <option value="Pizza">{{ t("geral_pizza") }}</option>
+                        <option value="Bebida">{{ t("geral_bebida_emoji") }}</option>
+                    </select>
+                </div>
+
+                <!-- #11 — Modo meio a meio -->
+                <div class="col-7" id="container_pizza">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label mb-0">{{ t("pedido_sabor") }}</label>
+                        <label style="font-size:11px;color:#6b7280;cursor:pointer;">
+                            <input type="checkbox" id="meio_a_meio" onchange="toggleMeioAMeio()" style="vertical-align:middle;">
+                            ½ + ½
+                        </label>
+                    </div>
+                    <select id="item_sabor_pizza" class="form-select form-select-sm" onchange="atualizarPrecoDinamico()">
+                        {% for sabor in cardapio_pizzas.keys() %}
+                        <option value="{{ sabor }}">{{ sabor }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="item_sabor_pizza2" class="form-select form-select-sm mt-2" style="display:none;" onchange="atualizarPrecoDinamico()">
+                        {% for sabor in cardapio_pizzas.keys() %}
+                        <option value="{{ sabor }}">{{ sabor }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-7" id="container_bebida" style="display:none;">
+                    <label class="form-label">{{ t("prod_aba_bebidas") }}</label>
+                    <select id="item_nome_bebida" class="form-select form-select-sm" onchange="atualizarPrecoDinamico()">
+                        {% for bebida, preco in cardapio_bebidas.items() %}
+                        <option value="{{ bebida }}" data-preco="{{ preco }}">{{ bebida }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-5" id="container_tamanho">
+                    <label class="form-label">{{ t("pedido_tamanho") }}</label>
+                    <select id="item_tamanho" class="form-select form-select-sm" onchange="atualizarPrecoDinamico()">
+                        <option value="Grande">{{ t("geral_tamanho_grande") }}</option>
+                        <option value="Média">{{ t("geral_tamanho_media") }}</option>
+                        <option value="Broto">{{ t("geral_tamanho_broto") }}</option>
+                        <option value="Gigante">{{ t("geral_tamanho_gigante") }}</option>
+                    </select>
+                </div>
+                <div class="col-7">
+                    <label class="form-label">{{ t("pedido_preco") }}</label>
+                    <input type="number" id="item_preco" class="form-control form-control-sm" readonly value="0.00"
+                           style="font-weight:700;color:#dc2626;">
+                </div>
+
+                <!-- #12 — Adicionais -->
+                <div class="col-12" id="container_adicionais" style="display:none;">
+                    <label class="form-label" style="font-size:11px;color:#6b7280;">Adicionais</label>
+                    <div id="lista_adicionais" class="d-flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="col-5 d-flex align-items-end">
+                    <button type="button" class="btn-red w-100" style="font-size:12px;padding:7px;" onclick="adicionarItemALista()">
+                        <i class="bi bi-plus-lg"></i> {{ t("pedido_btn_adicionar") }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrinho -->
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="form-label mb-0">{{ t("pedido_itens") }}</span>
+                <button type="button" onclick="resetarCarrinho()" style="background:none;border:none;color:#9ca3af;font-size:11px;cursor:pointer;">{{ t("pedido_limpar") }}</button>
+            </div>
+            <div id="lista_itens_visual">
+                <div id="cart-empty" class="dk-row" style="color:#6b7280;font-size:12.5px;border:1.5px dashed #e5e7eb;border-radius:8px;padding:12px;text-align:center;">
+                    {{ t("geral_nenhum_item") }}
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                <span style="font-size:12px;color:#6b7280;font-weight:600;">{{ t("geral_subtotal") }}</span>
+                <span style="font-size:15px;font-weight:800;color:#dc2626;">R$ <span id="subtotal_visual">0.00</span></span>
+            </div>
+        </div>
+
+        <hr style="border-color:#f3f4f6;">
+
+        <!-- Formulário de envio -->
+        <form method="POST" action="{{ url_for('dashboard') }}" onsubmit="return prepararEnvio()">
+            <input type="hidden" name="itens_pedido_json" id="itens_pedido_json">
+
+            <!-- #8 — Combo -->
+            <div class="mb-3">
+                <label class="form-label" style="font-size:12px;">Combo / Promoção</label>
+                <select name="combo_id" id="combo_id" class="form-select" onchange="aplicarCombo()">
+                    <option value="">— Sem combo —</option>
+                    {% for c in combos %}
+                    <option value="{{ c.id }}"
+                            data-desconto="{{ c.desconto }}"
+                            data-itens='{{ c.itens|tojson }}'>
+                        {{ c.nome }} ({{ c.descricao }}) — R$ {{ "%.2f"|format(c.desconto) }} off
+                    </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="combo_desconto" id="combo_desconto" value="0">
+                <div id="combo_info" style="font-size:11.5px;color:#16a34a;margin-top:4px;display:none;"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ t("pedido_cliente") }} <span style="color:#9ca3af;font-weight:400;">(nome ou telefone)</span></label>
+                <input type="text" name="cliente" class="form-control" required
+                       list="clientes_lista" placeholder="{{ t('pedido_cliente_placeholder') }}">
+                <datalist id="clientes_lista">
+                    {% for c in clientes %}
+                    <option value="{{ c.identificador }}">{{ c.nome }}</option>
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label">{{ t("pedido_tipo_entrega") }}</label>
+                    <select name="tipo_entrega" id="tipo_entrega" class="form-select" onchange="toggleCamposEntrega()">
+                        <option value="Balcão">🏪 {{ t('dash_balcao') }}</option>
+                        <option value="Entrega">🛵 {{ t('dash_entrega') }}</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">{{ t("pedido_pagamento") }}</label>
+                    <select name="forma_pagamento" class="form-select">
+                        <option value="Dinheiro">{{ t("geral_dinheiro") }}</option>
+                        <option value="Cartão de Crédito">{{ t("geral_credito") }}</option>
+                        <option value="Cartão de Débito">{{ t("geral_debito") }}</option>
+                        <option value="PIX">{{ t("geral_pix") }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="secao_entrega" class="delivery-section" style="display:none;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:16px;">
+                <div class="mb-2">
+                    <label class="form-label" style="color:#c2410c;">📍 {{ t("pedido_endereco") }}</label>
+                    <input type="text" name="endereco" id="endereco" class="form-control form-control-sm" placeholder="Rua, número, bairro">
+                </div>
+                <div>
+                    <label class="form-label" style="color:#c2410c;">{{ t("pedido_taxa") }}</label>
+                    <input type="number" step="0.01" name="taxa_entrega" id="taxa_entrega" class="form-control form-control-sm" value="0.00">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ t("pedido_obs") }} <span style="color:#9ca3af;font-weight:400;">(opcional)</span></label>
+                <textarea name="observacoes" class="form-control" rows="2"
+                    placeholder="{{ t('pedido_obs_placeholder') }}"></textarea>
+            </div>
+
+            <button type="submit" class="btn-red w-100" style="padding:11px;font-size:14px;">
+                <i class="bi bi-send me-1"></i> {{ t("pedido_btn_enviar") }}
+            </button>
+        </form>
+
+        <hr style="border-color:#f3f4f6;margin-top:20px;">
+
+        <!-- Cadastrar cliente rápido -->
+        <div>
+            <div class="form-label" style="font-size:11px;color:#6b7280;letter-spacing:.5px;">{{ t("pedido_novo_cliente") }}</div>
+            <form method="POST" action="{{ url_for('cadastrar_cliente') }}" class="mt-2">
+                <div class="row g-2">
+                    <div class="col-12">
+                        <input type="text" name="nome_cliente" class="form-control form-control-sm"
+                               required placeholder="{{ t('pedido_nome_cliente') }}">
+                    </div>
+                    <div class="col-6">
+                        <div style="position:relative;">
+                            <input type="text" name="cpf_cliente" id="cpfClienteInput"
+                                   class="form-control form-control-sm" maxlength="14"
+                                   placeholder="{{ t('pedido_cpf') }}"
+                                   oninput="mascararCPFCliente(this)"
+                                   onblur="validarCPFClienteInline(this)"
+                                   style="padding-right:26px;">
+                            <span id="cpfClienteStatus" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;display:none;"></span>
+                        </div>
+                        <div id="cpfClienteMsg" style="font-size:10.5px;color:#f87171;margin-top:2px;display:none;"></div>
+                    </div>
+                    <div class="col-6">
+                        <div style="position:relative;">
+                            <input type="text" name="telefone_cliente" id="telClienteInput"
+                                   class="form-control form-control-sm" maxlength="15"
+                                   placeholder="{{ t('pedido_telefone') }}"
+                                   oninput="mascararTelCliente(this)"
+                                   onblur="validarTelClienteInline(this)"
+                                   style="padding-right:26px;">
+                            <span id="telClienteStatus" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;display:none;"></span>
+                        </div>
+                        <div id="telClienteMsg" style="font-size:10.5px;color:#f87171;margin-top:2px;display:none;"></div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn-ghost w-100" style="font-size:12px;padding:7px;">
+                            <i class="bi bi-person-plus me-1"></i> {{ t("pedido_btn_cadastrar_cliente") }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL CANCELAR -->
+<div class="modal fade" id="modalCancelar" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:16px 20px;">
+                <h5 class="modal-title" style="color:#fff;font-size:14px;font-weight:700;">✕ {{ t("cancelar_titulo") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCancelar" method="POST">
+                <div class="modal-body" style="padding:20px;">
+                    <label class="form-label">{{ t("cancelar_motivo") }}</label>
+                    <textarea name="motivo_cancelamento" class="form-control" rows="3"
+                        placeholder="{{ t('cancelar_motivo_placeholder') }}" required></textarea>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 20px 18px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("cancelar_voltar") }}</button>
+                    <button type="submit" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+                        {{ t("cancelar_confirmar") }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let itensPedido = [];
+const cardapioPizzas = {{ cardapio_pizzas|tojson }};
+const ADICIONAIS = {{ adicionais|tojson }};
+const TRAD = {
+    nenhum_item: "{{ t('geral_nenhum_item') }}",
+};
+
+function alternarVisaoCardapio() {
+    const tipo = document.getElementById('item_tipo').value;
+    document.getElementById('container_pizza').style.display  = tipo==='Pizza' ? 'block' : 'none';
+    document.getElementById('container_tamanho').style.display = tipo==='Pizza' ? 'block' : 'none';
+    document.getElementById('container_bebida').style.display = tipo==='Bebida' ? 'block' : 'none';
+    document.getElementById('container_adicionais').style.display = 'block';
+    if (tipo !== 'Pizza') {
+        document.getElementById('meio_a_meio').checked = false;
+        document.getElementById('item_sabor_pizza2').style.display = 'none';
+    }
+    montarAdicionais(tipo);
+    atualizarPrecoDinamico();
+}
+
+/* #11 — Meio a meio */
+function toggleMeioAMeio() {
+    const ativo = document.getElementById('meio_a_meio').checked;
+    document.getElementById('item_sabor_pizza2').style.display = ativo ? 'block' : 'none';
+    atualizarPrecoDinamico();
+}
+
+/* #12 — Renderiza os checkboxes de adicionais conforme o tipo */
+function montarAdicionais(tipo) {
+    const box = document.getElementById('lista_adicionais');
+    box.innerHTML = '';
+    const filtro = tipo === 'Pizza' ? 'pizza' : 'bebida';
+    ADICIONAIS.filter(a => a.aplica === filtro || a.aplica === 'ambos').forEach(a => {
+        box.innerHTML += `
+            <label class="adic-chip">
+                <input type="checkbox" class="adic-check" value="${a.id}" data-nome="${a.nome}" data-preco="${a.preco}">
+                <span class="adic-nome">${a.nome}</span>
+                <span class="adic-preco">+R$ ${parseFloat(a.preco).toFixed(2)}</span>
+            </label>
+        `;
+    });
+}
+
+function adicionaisSelecionados() {
+    const checks = document.querySelectorAll('.adic-check:checked');
+    return Array.from(checks).map(c => ({
+        id: parseInt(c.value),
+        nome: c.dataset.nome,
+        preco: parseFloat(c.dataset.preco),
+    }));
+}
+
+function atualizarPrecoDinamico() {
+    const tipo = document.getElementById('item_tipo').value;
+    let preco = 0;
+    if (tipo === 'Pizza') {
+        const sabor1 = document.getElementById('item_sabor_pizza').value;
+        const sabor2 = document.getElementById('item_sabor_pizza2').value;
+        const tamanho = document.getElementById('item_tamanho').value;
+        const usarMeio = document.getElementById('meio_a_meio').checked;
+        const p1 = (cardapioPizzas[sabor1] && cardapioPizzas[sabor1][tamanho]) || 0;
+        if (usarMeio) {
+            const p2 = (cardapioPizzas[sabor2] && cardapioPizzas[sabor2][tamanho]) || 0;
+            preco = Math.max(p1, p2);
+        } else {
+            preco = p1;
+        }
+    } else {
+        const sel = document.getElementById('item_nome_bebida');
+        preco = parseFloat(sel.options[sel.selectedIndex].getAttribute('data-preco') || 0);
+    }
+    document.getElementById('item_preco').value = preco.toFixed(2);
+}
+
+function adicionarItemALista() {
+    const tipo = document.getElementById('item_tipo').value;
+    const preco = parseFloat(document.getElementById('item_preco').value);
+    let nome = '';
+
+    if (tipo === 'Pizza') {
+        const sabor1 = document.getElementById('item_sabor_pizza').value;
+        const sabor2 = document.getElementById('item_sabor_pizza2').value;
+        const tamanho = document.getElementById('item_tamanho').value;
+        if (document.getElementById('meio_a_meio').checked) {
+            nome = `${sabor1} + ${sabor2} (${tamanho})`;
+        } else {
+            nome = `${sabor1} (${tamanho})`;
+        }
+    } else {
+        nome = document.getElementById('item_nome_bebida').value;
+    }
+
+    const adics = adicionaisSelecionados();
+
+    const chave = nome + '|' + JSON.stringify(adics.map(a => a.id).sort());
+    const existing = itensPedido.find(i => i._chave === chave);
+    if (existing) {
+        existing.quantidade++;
+    } else {
+        itensPedido.push({
+            tipo, nome, preco: preco.toFixed(2), quantidade: 1,
+            adicionais: adics, _chave: chave,
+        });
+    }
+    document.querySelectorAll('.adic-check').forEach(c => c.checked = false);
+    renderizarItens();
+}
+
+function removerUmaUnidade(idx) {
+    if (itensPedido[idx].quantidade > 1) itensPedido[idx].quantidade--;
+    else itensPedido.splice(idx, 1);
+    renderizarItens();
+}
+
+function resetarCarrinho() { itensPedido = []; renderizarItens(); }
+
+function renderizarItens() {
+    const lista = document.getElementById('lista_itens_visual');
+    let html = '', subtotal = 0;
+    if (itensPedido.length === 0) {
+        lista.innerHTML = '<div style="color:#6b7280;font-size:12.5px;border:1.5px dashed #e5e7eb;border-radius:8px;padding:12px;text-align:center;">' + TRAD.nenhum_item + '</div>';
+        document.getElementById('subtotal_visual').innerText = '0.00';
+        return;
+    }
+    itensPedido.forEach((item, idx) => {
+        const precoComAdic = parseFloat(item.preco) + (item.adicionais||[]).reduce((s,a)=>s+parseFloat(a.preco),0);
+        subtotal += precoComAdic * item.quantidade;
+        const badgeClass = item.tipo === 'Pizza' ? 'badge-pizza' : 'badge-bebida';
+        const adicsHtml = (item.adicionais||[]).map(a =>
+            `<div style="font-size:10.5px;color:#6b7280;margin-left:8px;">+ ${a.nome} (R$ ${parseFloat(a.preco).toFixed(2)})</div>`
+        ).join('');
+        html += `<div class="item-cart-line">
+            <div style="flex:1;">
+                <div>
+                    <span class="item-badge ${badgeClass} me-1">${item.tipo}</span>
+                    <strong>${item.quantidade}x</strong> ${item.nome}
+                </div>
+                ${adicsHtml}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:700;color:#dc2626;font-size:12px;">R$ ${(precoComAdic*item.quantidade).toFixed(2)}</span>
+                <button type="button" onclick="removerUmaUnidade(${idx})"
+                    style="width:22px;height:22px;border-radius:5px;border:1.5px solid #e5e7eb;background:#fff;color:#9ca3af;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;">−</button>
+            </div>
+        </div>`;
+    });
+    lista.innerHTML = html;
+    document.getElementById('subtotal_visual').innerText = subtotal.toFixed(2);
+}
+
+/* #8 — Aplica combo (auto-preenche os itens se ainda não houver) */
+function aplicarCombo() {
+    const sel = document.getElementById('combo_id');
+    const opt = sel.options[sel.selectedIndex];
+    const desc = parseFloat(opt.dataset.desconto || 0);
+    document.getElementById('combo_desconto').value = desc;
+    const info = document.getElementById('combo_info');
+
+    if (!opt.value) {
+        info.style.display = 'none';
+        return;
+    }
+
+    try {
+        const itens = JSON.parse(opt.dataset.itens);
+        itens.forEach(i => {
+            const chave = i.nome + '||';
+            if (!itensPedido.find(p => p._chave === chave)) {
+                itensPedido.push({
+                    tipo: i.tipo,
+                    nome: i.nome,
+                    preco: parseFloat(i.preco).toFixed(2),
+                    quantidade: parseInt(i.quantidade || 1),
+                    adicionais: [],
+                    _chave: chave,
+                });
+            }
+        });
+        renderizarItens();
+        info.style.display = 'block';
+        info.textContent = `✅ Combo aplicado: -R$ ${desc.toFixed(2)} no total`;
+    } catch (e) { console.error(e); }
+}
+
+function toggleCamposEntrega() {
+    const isEntrega = document.getElementById('tipo_entrega').value === 'Entrega';
+    const sec = document.getElementById('secao_entrega');
+    sec.style.display = isEntrega ? 'block' : 'none';
+    document.getElementById('endereco').required = isEntrega;
+    if (!isEntrega) { document.getElementById('endereco').value=''; document.getElementById('taxa_entrega').value='0.00'; }
+}
+
+function prepararEnvio() {
+    if (itensPedido.length === 0) { alert('Adicione ao menos um item ao pedido!'); return false; }
+    const limpos = itensPedido.map(({_chave, ...rest}) => rest);
+    document.getElementById('itens_pedido_json').value = JSON.stringify(limpos);
+    return true;
+}
+
+window.onload = function() { alternarVisaoCardapio(); };
+
+function abrirCancelar(id) {
+    document.getElementById('formCancelar').action = `/cancelar_pedido/${id}`;
+    new bootstrap.Modal(document.getElementById('modalCancelar')).show();
+}
+
+/* Máscaras de CPF/telefone do cliente */
+function mascararCPFCliente(input) {
+    let v = input.value.replace(/\D/g,'').slice(0,11);
+    if (v.length > 9)      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    input.value = v;
+}
+function mascararTelCliente(input) {
+    let v = input.value.replace(/\D/g,'').slice(0,11);
+    if (v.length === 11)    v = v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    else if (v.length > 6)  v = v.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+    else if (v.length > 2)  v = v.replace(/(\d{2})(\d+)/, '($1) $2');
+    input.value = v;
+}
+function cpfClienteValido(cpf) {
+    cpf = cpf.replace(/\D/g,'');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let s=0,r;
+    for(let i=1;i<=9;i++) s+=parseInt(cpf[i-1])*(11-i);
+    r=(s*10)%11; if(r===10||r===11) r=0;
+    if(r!==parseInt(cpf[9])) return false;
+    s=0;
+    for(let i=1;i<=10;i++) s+=parseInt(cpf[i-1])*(12-i);
+    r=(s*10)%11; if(r===10||r===11) r=0;
+    return r===parseInt(cpf[10]);
+}
+function telClienteValido(tel) {
+    const d = tel.replace(/\D/g,'');
+    if (d.length===11) { const ddd=parseInt(d.slice(0,2)); return ddd>=11&&ddd<=99&&d[2]==='9'; }
+    if (d.length===10) { const ddd=parseInt(d.slice(0,2)); return ddd>=11&&ddd<=99&&'2345'.includes(d[2]); }
+    return false;
+}
+function validarCPFClienteInline(input) {
+    const st = document.getElementById('cpfClienteStatus');
+    const mg = document.getElementById('cpfClienteMsg');
+    if (!input.value) { st.style.display='none'; mg.style.display='none'; input.style.borderColor=''; return; }
+    if (cpfClienteValido(input.value)) {
+        st.textContent='✅'; st.style.display='inline';
+        mg.style.display='none'; input.style.borderColor='#16a34a';
+    } else {
+        st.textContent='❌'; st.style.display='inline';
+        mg.textContent='CPF inválido.'; mg.style.display='block';
+        input.style.borderColor='#ef4444';
+    }
+}
+function validarTelClienteInline(input) {
+    const st = document.getElementById('telClienteStatus');
+    const mg = document.getElementById('telClienteMsg');
+    if (!input.value) { st.style.display='none'; mg.style.display='none'; input.style.borderColor=''; return; }
+    if (telClienteValido(input.value)) {
+        st.textContent='✅'; st.style.display='inline';
+        mg.style.display='none'; input.style.borderColor='#16a34a';
+    } else {
+        st.textContent='❌'; st.style.display='inline';
+        mg.textContent='Telefone inválido.'; mg.style.display='block';
+        input.style.borderColor='#ef4444';
+    }
+}
+</script>
+{% endblock %}

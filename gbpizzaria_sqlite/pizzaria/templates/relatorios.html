@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav_relatorios") }} — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("rel_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("rel_subtitulo") }}{% endblock %}
+
+{% block topbar_actions %}
+{% if ultimo_caixa %}
+<a href="{{ url_for('gerar_pdf_caixa', caixa_id=ultimo_caixa.id) }}" class="btn-red">
+    <i class="bi bi-file-earmark-pdf me-1"></i> {{ t("rel_baixar_caixa") }}
+</a>
+{% endif %}
+{% endblock %}
+
+{% block head_extra %}
+<style>
+html:not(.dark) .table-col-header { font-size:11.5px; font-weight:600; color:#6b7280; border:none; }
+html.dark .table-col-header { font-size:11.5px; font-weight:600; color:#94a3b8 !important; border:none !important; background-color:#0f172a !important; }
+html:not(.dark) .table-row-item { border-top:1px solid #f3f4f6; }
+html.dark .table-row-item { border-top:1px solid #334155 !important; }
+html.dark .table-row-item td, html.dark .table-row-item th { background-color:#1e293b !important; color:#f1f5f9 !important; border-color:#334155 !important; }
+html.dark .card { background:#1e293b !important; color:#f1f5f9; }
+html.dark .card h6 { color:#f1f5f9 !important; }
+html.dark .prog-bg { background:#0f172a !important; }
+html.dark input[type="date"] { background:#0f172a; border-color:#334155; color:#f1f5f9; color-scheme: dark; }
+
+/* Cards de resultado */
+.resultado-card {
+    border-radius: 12px;
+    padding: 20px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+}
+.resultado-card.lucro-positivo { border-color: #bbf7d0; background: #f0fdf4; }
+.resultado-card.lucro-negativo { border-color: #fecaca; background: #fef2f2; }
+.resultado-card .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+.resultado-card .valor {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+}
+.resultado-card.lucro-positivo .valor { color: #16a34a; }
+.resultado-card.lucro-negativo .valor { color: #dc2626; }
+.resultado-card .extra {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+html.dark .resultado-card { background: #1e293b; border-color: #334155; }
+html.dark .resultado-card.lucro-positivo { background: #052e16; border-color: #166534; }
+html.dark .resultado-card.lucro-negativo { background: #450a0a; border-color: #7f1d1d; }
+html.dark .resultado-card .label { color: #94a3b8; }
+html.dark .resultado-card .valor { color: #f1f5f9; }
+html.dark .resultado-card.lucro-positivo .valor { color: #86efac; }
+html.dark .resultado-card.lucro-negativo .valor { color: #fca5a5; }
+html.dark .resultado-card .extra { color: #94a3b8; }
+
+/* Container do gráfico de lucro — altura fixa para dar respiro ao eixo Y */
+.chart-lucro-wrap {
+    position: relative;
+    height: 320px;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── FILTRO DE PERÍODO ─────────────────────────────────────── -->
+<form method="GET" action="{{ url_for('relatorios') }}" class="card shadow-sm p-3 mb-4">
+    <div class="d-flex gap-3 align-items-end flex-wrap">
+        <div>
+            <label class="form-label mb-1" style="font-size:11.5px;">{{ t("rel_filtro_inicio") }}</label>
+            <input type="date" name="data_inicio" class="form-control form-control-sm"
+                   value="{{ data_inicio }}" style="width:160px;">
+        </div>
+        <div>
+            <label class="form-label mb-1" style="font-size:11.5px;">{{ t("rel_filtro_fim") }}</label>
+            <input type="date" name="data_fim" class="form-control form-control-sm"
+                   value="{{ data_fim }}" style="width:160px;">
+        </div>
+        <button type="submit" class="btn-red" style="font-size:13px;padding:7px 16px;">
+            <i class="bi bi-funnel me-1"></i> {{ t("rel_filtro_btn") }}
+        </button>
+        {% if data_inicio %}
+        <a href="{{ url_for('relatorios') }}" class="btn-ghost" style="font-size:13px;padding:7px 14px;">
+            {{ t("rel_filtro_limpar") }}
+        </a>
+        {% endif %}
+    </div>
+</form>
+
+<!-- ── CARDS DE FATURAMENTO (curtos prazos) ──────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("rel_fat_hoje") }}</div>
+                    <div class="stat-value">R$ {{ "%.2f"|format(faturamento_dia) }}</div>
+                </div>
+                <div class="stat-icon" style="background:#fef2f2;">📅</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("rel_fat_semana") }}</div>
+                    <div class="stat-value">R$ {{ "%.2f"|format(faturamento_semana) }}</div>
+                </div>
+                <div class="stat-icon" style="background:#eff6ff;">📆</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("rel_fat_mes") }}</div>
+                    <div class="stat-value">R$ {{ "%.2f"|format(faturamento_mes) }}</div>
+                </div>
+                <div class="stat-icon" style="background:#f0fdf4;">🗓️</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── CARD DE RESULTADO (LUCRO) ─────────────────────────────── -->
+<h6 style="font-weight:700;margin-bottom:12px;">
+    <i class="bi bi-graph-up-arrow me-2" style="color:#dc2626;"></i>{{ t("rel_lucro_titulo") }}
+    {% if data_inicio and data_fim %}
+        <span style="font-size:12px;color:#6b7280;font-weight:500;">
+            — {{ data_inicio }} → {{ data_fim }}
+        </span>
+    {% endif %}
+</h6>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="resultado-card">
+            <div class="label">💰 {{ t("rel_lucro_faturamento") }}</div>
+            <div class="valor" style="color:#111827;">R$ {{ "%.2f"|format(faturamento_periodo) }}</div>
+            <div class="extra">
+                {{ data_inicio }} → {{ data_fim }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="resultado-card">
+            <div class="label">🛒 {{ t("rel_lucro_compras") }}</div>
+            <div class="valor" style="color:#dc2626;">R$ {{ "%.2f"|format(total_compras) }}</div>
+            <div class="extra">
+                {{ n_compras }} {{ t("rel_lucro_n_compras") }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="resultado-card {% if lucro_liquido >= 0 %}lucro-positivo{% else %}lucro-negativo{% endif %}">
+            <div class="label">
+                {% if lucro_liquido >= 0 %}📈 {{ t("rel_lucro_positivo") }}{% else %}📉 {{ t("rel_lucro_negativo") }}{% endif %}
+                — {{ t("rel_lucro_liquido") }}
+            </div>
+            <div class="valor">
+                R$ {{ "%.2f"|format(lucro_liquido) }}
+            </div>
+            <div class="extra">
+                {{ t("rel_lucro_margem") }}: {{ "%.1f"|format(margem) }}%
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── GRÁFICO: FATURAMENTO × COMPRAS × LUCRO POR CAIXA ──────── -->
+{% if caixas_labels %}
+<div class="card shadow-sm mb-4 p-4">
+    <h6 style="font-weight:700;color:#111827;margin-bottom:16px;">
+        <i class="bi bi-bar-chart-line me-2" style="color:#dc2626;"></i>{{ t("rel_lucro_grafico") }}
+    </h6>
+    <div class="chart-lucro-wrap">
+        <canvas id="chartLucro"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── DETALHAMENTO DE COMPRAS ───────────────────────────────── -->
+{% if detalhe_compras %}
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center px-4 py-3" style="border-bottom:1px solid #f3f4f6;">
+            <h6 style="font-weight:700;margin:0;">
+                <i class="bi bi-receipt me-2" style="color:#dc2626;"></i>{{ t("rel_lucro_detalhe_compras") }}
+            </h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="table-col-header" style="padding:10px 16px;">{{ t("forn_col_nome")|upper }}</th>
+                        <th class="table-col-header" style="padding:10px 16px;text-align:center;">{{ t("compras_n_compras")|upper }}</th>
+                        <th class="table-col-header" style="padding:10px 16px;text-align:right;">{{ t("compras_col_total")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalhe_compras %}
+                    <tr class="table-row-item">
+                        <td style="padding:12px 16px;font-weight:600;">{{ d.fornecedor }}</td>
+                        <td style="padding:12px 16px;text-align:center;color:#6b7280;">{{ d.n }}</td>
+                        <td style="padding:12px 16px;text-align:right;font-weight:700;color:#dc2626;">
+                            R$ {{ "%.2f"|format(d.total) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% elif data_inicio or data_fim %}
+<div class="card shadow-sm mb-4 p-4 text-center" style="color:#9ca3af;font-size:13px;">
+    <div style="font-size:32px;">📋</div>
+    <div style="margin-top:8px;">{{ t("rel_lucro_sem_compras") }}</div>
+</div>
+{% endif %}
+
+<!-- ── GRÁFICOS EXISTENTES (pizzas + caixas) ─────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-5">
+        <div class="card shadow-sm p-4">
+            <h6 style="font-weight:700;color:#111827;margin-bottom:16px;">
+                <i class="bi bi-trophy me-2" style="color:#dc2626;"></i>{{ t("rel_top_pizzas") }}
+            </h6>
+            {% if ranking_sabores %}
+            <canvas id="chartPizzas" height="200"></canvas>
+            {% else %}
+            <div class="text-center py-4" style="color:#d1d5db;">
+                <div style="font-size:32px;">📊</div>
+                <div style="font-size:13px;margin-top:8px;">{{ t("geral_nenhuma_venda") }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <div class="card shadow-sm p-4">
+            <h6 style="font-weight:700;color:#111827;margin-bottom:16px;">
+                <i class="bi bi-graph-up me-2" style="color:#dc2626;"></i>{{ t("rel_grafico_caixas") }}
+            </h6>
+            {% if historico_caixas %}
+            <canvas id="chartCaixas" height="200"></canvas>
+            {% else %}
+            <div class="text-center py-4" style="color:#d1d5db;">
+                <div style="font-size:32px;">📈</div>
+                <div style="font-size:13px;margin-top:8px;">{{ t("rel_sem_caixas") }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ── RANKING DE FUNCIONÁRIOS ───────────────────────────────── -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center px-4 py-3" style="border-bottom:1px solid #f3f4f6;">
+            <h6 style="font-weight:700;margin:0;">
+                <i class="bi bi-people me-2" style="color:#dc2626;"></i>{{ t("rel_funcionarios") }}
+            </h6>
+        </div>
+        {% if ranking_funcionarios %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead style="background:#f9fafb;">
+                    <tr>
+                        <th class="table-col-header" style="padding:12px 16px;">#</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_funcionario")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;text-align:center;">{{ t("rel_col_pedidos")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_faturamento")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_barra")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set max_fat = ranking_funcionarios[0][1].faturamento if ranking_funcionarios else 1 %}
+                    {% for nome, dados in ranking_funcionarios %}
+                    <tr class="table-row-item">
+                        <td style="padding:14px 16px;font-weight:700;color:#9ca3af;">{{ loop.index }}</td>
+                        <td style="padding:14px 16px;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:32px;height:32px;border-radius:50%;background:#dc2626;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">
+                                    {{ nome[0]|upper }}
+                                </div>
+                                <span style="font-weight:600;">{{ nome }}</span>
+                            </div>
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;font-weight:700;">{{ dados.pedidos }}</td>
+                        <td style="padding:14px 16px;font-weight:800;color:#16a34a;">R$ {{ "%.2f"|format(dados.faturamento) }}</td>
+                        <td style="padding:14px 16px;min-width:140px;">
+                            <div class="prog-bg" style="border-radius:4px;height:8px;overflow:hidden;background:#f3f4f6;">
+                                <div style="background:#dc2626;height:100%;border-radius:4px;width:{{ (dados.faturamento / max_fat * 100)|int }}%;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4" style="color:#9ca3af;font-size:13px;">{{ t("rel_sem_vendas") }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ── HISTÓRICO DE CAIXAS ───────────────────────────────────── -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center justify-content-between px-4 py-3" style="border-bottom:1px solid #f3f4f6;">
+            <h6 style="font-weight:700;margin:0;">
+                <i class="bi bi-clock-history me-2" style="color:#dc2626;"></i>{{ t("rel_historico_caixas") }}
+            </h6>
+            <span class="badge" style="background:#fef2f2;color:#dc2626;font-size:12px;">{{ historico_caixas|length }} {{ t("geral_registros") }}</span>
+        </div>
+        {% if historico_caixas %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead style="background:#f9fafb;">
+                    <tr>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_cod")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_data")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_operador")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_pedidos")|upper }}</th>
+                        <th class="table-col-header" style="padding:12px 16px;">{{ t("rel_col_faturamento")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11.5px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("rel_col_pdf")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for caixa in historico_caixas|reverse %}
+                    <tr class="table-row-item">
+                        <td style="padding:14px 16px;">
+                            <span style="background:#f3f4f6;color:#374151;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700;">#{{ caixa.id }}</span>
+                        </td>
+                        <td style="padding:14px 16px;color:#6b7280;">{{ caixa.data_fechamento }}</td>
+                        <td style="padding:14px 16px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="width:28px;height:28px;border-radius:50%;background:#dc2626;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">
+                                    {{ caixa.usuario[0]|upper }}
+                                </div>
+                                <span style="font-weight:600;">{{ caixa.usuario }}</span>
+                            </div>
+                        </td>
+                        <td style="padding:14px 16px;">
+                            <span style="font-weight:600;color:#374151;">{{ caixa.total_vendas }}</span>
+                            <span style="color:#9ca3af;font-size:12px;"> {{ t("rel_pedidos_un") }}</span>
+                        </td>
+                        <td style="padding:14px 16px;">
+                            <span style="font-weight:800;color:#16a34a;font-size:15px;">R$ {{ "%.2f"|format(caixa.faturamento_total) }}</span>
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            <a href="{{ url_for('gerar_pdf_caixa', caixa_id=caixa.id) }}"
+                               style="display:inline-flex;align-items:center;gap:4px;background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5" style="color:#d1d5db;">
+            <div style="font-size:40px;">🗂️</div>
+            <div style="font-size:13.5px;margin-top:10px;color:#9ca3af;">{{ t("rel_sem_caixas") }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Gráfico: Faturamento × Compras × Lucro por caixa ─────── */
+{% if caixas_labels %}
+new Chart(document.getElementById('chartLucro'), {
+    type: 'bar',
+    data: {
+        labels: [{% for l in caixas_labels %}'{{ l }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [
+            {
+                label: '{{ t("rel_lucro_faturamento") }}',
+                data: [{% for v in caixas_fat %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: '#16a34a',
+                borderRadius: 4,
+            },
+            {
+                label: '{{ t("rel_lucro_compras") }}',
+                data: [{% for v in caixas_comp %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: '#dc2626',
+                borderRadius: 4,
+            },
+            {
+                label: '{{ t("rel_lucro_liquido") }}',
+                data: [{% for v in caixas_lucro %}{{ v }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: '#3b82f6',
+                borderRadius: 4,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        barPercentage: 0.65,
+        categoryPercentage: 0.75,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { font: { size: 11 }, boxWidth: 12, padding: 12 }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (ctx) => ctx.dataset.label + ': R$ ' + ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grace: '10%',
+                grid: { color: '#f3f4f6' },
+                ticks: {
+                    callback: v => 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }),
+                    font: { size: 11 },
+                    maxTicksLimit: 6
+                }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 11 } }
+            }
+        }
+    }
+});
+{% endif %}
+
+/* ── Gráfico: top pizzas ──────────────────────────────────── */
+{% if ranking_sabores %}
+new Chart(document.getElementById('chartPizzas'), {
+    type: 'bar',
+    data: {
+        labels: [{% for r in ranking_sabores %}'{{ r.sabor }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Unidades vendidas',
+            data: [{% for r in ranking_sabores %}{{ r.quantidade }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: ['#dc2626','#ef4444','#f87171','#fca5a5','#fecaca'],
+            borderRadius: 8, borderSkipped: false,
+        }]
+    },
+    options: {
+        responsive: true, plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f3f4f6' } },
+                  x: { grid: { display: false } } }
+    }
+});
+{% endif %}
+
+/* ── Gráfico: faturamento por caixa ───────────────────────── */
+{% if historico_caixas %}
+new Chart(document.getElementById('chartCaixas'), {
+    type: 'line',
+    data: {
+        labels: [{% for c in historico_caixas %}'Caixa #{{ c.id }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: '{{ t("rel_col_faturamento") }} (R$)',
+            data: [{% for c in historico_caixas %}{{ c.faturamento_total }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.08)',
+            borderWidth: 2.5, pointBackgroundColor: '#dc2626', pointRadius: 5,
+            tension: 0.3, fill: true,
+        }]
+    },
+    options: {
+        responsive: true, plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: '#f3f4f6' },
+                        ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) } },
+                  x: { grid: { display: false } } }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

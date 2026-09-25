@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Cardápio — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("prod_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("prod_subtitulo") }}{% endblock %}
+
+{% block topbar_actions %}
+{% if is_gerente() %}
+<button class="btn-red" data-bs-toggle="modal" data-bs-target="#modalNovaPizza">
+    <i class="bi bi-plus-lg me-1"></i> {{ t("prod_nova_pizza") }}
+</button>
+<button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#modalNovaBebida">
+    <i class="bi bi-plus-lg me-1"></i> {{ t("prod_nova_bebida") }}
+</button>
+{% endif %}
+{% endblock %}
+
+{% block extra_style %}
+.product-row-inactive { opacity: 0.45; }
+.toggle-btn {
+    border:none; border-radius:7px; padding:5px 12px;
+    font-size:12px; font-weight:600; cursor:pointer;
+    transition: all .15s;
+}
+.toggle-on  { background:#fef2f2; color:#dc2626; }
+.toggle-on:hover  { background:#dc2626; color:#fff; }
+.toggle-off { background:#f0fdf4; color:#16a34a; }
+.toggle-off:hover { background:#16a34a; color:#fff; }
+.tab-pill {
+    padding:6px 16px; border-radius:20px; font-size:13px; font-weight:600;
+    cursor:pointer; border:none; background:#f3f4f6; color:#6b7280;
+    transition:all .15s;
+}
+.tab-pill.active { background:#dc2626; color:#fff; }
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex gap-2 mb-3">
+    <button class="tab-pill active" id="tabPizzas" onclick="showTab('pizzas')">🍕 {{ t('prod_aba_pizzas') }} ({{ pizzas|length }})</button>
+    <button class="tab-pill" id="tabBebidas" onclick="showTab('bebidas')">🥤 {{ t('prod_aba_bebidas') }} ({{ bebidas|length }})</button>
+</div>
+
+<!-- PIZZAS -->
+<div id="panelPizzas">
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="table-col-header">{{ t("prod_col_sabor")|upper }}</th>
+                            {% for tam in tamanhos %}
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ tam|upper }}</th>
+                            {% endfor %}
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("prod_col_status")|upper }}</th>
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("prod_col_acao")|upper }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pizza in pizzas %}
+                        <tr class="{{ 'product-row-inactive' if not pizza.ativo }}" class="table-row-item">
+                            <td style="padding:14px 16px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div style="width:34px;height:34px;border-radius:8px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:18px;">🍕</div>
+                                    <span style="font-weight:700;color:#111827;">{{ pizza.nome }}</span>
+                                </div>
+                            </td>
+                            {% for tam in tamanhos %}
+                            <td style="padding:14px 16px;text-align:center;">
+                                {% set p = pizza.precos_dict.get(tam, 0) %}
+                                {% if p > 0 %}
+                                <span style="font-weight:600;color:#374151;">R$ {{ "%.2f"|format(p) }}</span>
+                                {% else %}
+                                <span style="color:#e5e7eb;">—</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td style="padding:14px 16px;text-align:center;">
+                                {% if pizza.ativo %}
+                                <span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("prod_ativo") }}</span>
+                                {% else %}
+                                <span style="background:#f3f4f6;color:#9ca3af;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("prod_inativo") }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:14px 16px;text-align:center;">
+                                {% if is_gerente() %}
+                                <form method="POST" action="{{ url_for('alternar_produto', produto_id=pizza.id) }}">
+                                    <button type="submit" class="toggle-btn {{ 'toggle-on' if pizza.ativo else 'toggle-off' }}">
+                                        {{ t('prod_desabilitar') if pizza.ativo else t('prod_habilitar') }}
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span style="font-size:11.5px;color:#9ca3af;">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="{{ tamanhos|length + 3 }}" class="text-center py-5" style="color:#9ca3af;">{{ t("prod_vazio_pizzas") }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BEBIDAS -->
+<div id="panelBebidas" style="display:none;">
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="table-col-header">{{ t("geral_bebida") }}</th>
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("prod_col_preco")|upper }}</th>
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("prod_col_status")|upper }}</th>
+                            <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("prod_col_acao")|upper }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for beb in bebidas %}
+                        <tr class="{{ 'product-row-inactive' if not beb.ativo }}" class="table-row-item">
+                            <td style="padding:14px 16px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div style="width:34px;height:34px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:18px;">🥤</div>
+                                    <span style="font-weight:700;color:#111827;">{{ beb.nome }}</span>
+                                </div>
+                            </td>
+                            <td style="padding:14px 16px;text-align:center;font-weight:700;color:#374151;">R$ {{ "%.2f"|format(beb.preco) }}</td>
+                            <td style="padding:14px 16px;text-align:center;">
+                                {% if beb.ativo %}
+                                <span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("prod_ativa") }}</span>
+                                {% else %}
+                                <span style="background:#f3f4f6;color:#9ca3af;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("prod_inativa") }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:14px 16px;text-align:center;">
+                                {% if is_gerente() %}
+                                <form method="POST" action="{{ url_for('alternar_produto', produto_id=beb.id) }}">
+                                    <button type="submit" class="toggle-btn {{ 'toggle-on' if beb.ativo else 'toggle-off' }}">
+                                        {{ t('prod_desabilitar') if beb.ativo else t('prod_habilitar') }}
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span style="font-size:11.5px;color:#9ca3af;">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center py-5" style="color:#9ca3af;">{{ t("prod_vazio_bebidas") }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVA PIZZA (só gerente) -->
+{% if is_gerente() %}
+<div class="modal fade" id="modalNovaPizza" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" style="color:#fff;font-size:15px;font-weight:700;">🍕 {{ t("prod_modal_pizza") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('nova_pizza') }}">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("prod_nome_sabor") }}</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Ex: Pepperoni">
+                    </div>
+                    <label class="form-label">{{ t("geral_precos_tamanho") }}</label>
+                    <div class="row g-2">
+                        {% for tam in tamanhos %}
+                        <div class="col-6">
+                            <label class="form-label" style="color:#9ca3af;font-size:11px;">{{ tam|upper }}</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text" style="background:#f9fafb;border-color:#e5e7eb;">R$</span>
+                                <input type="number" name="preco_{{ tam }}" step="0.01" min="0" class="form-control" placeholder="0.00">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("prod_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("prod_adicionar_pizza") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVA BEBIDA -->
+<div class="modal fade" id="modalNovaBebida" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" style="color:#fff;font-size:15px;font-weight:700;">🥤 {{ t("prod_modal_bebida") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('nova_bebida') }}">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("prod_nome_bebida") }}</label>
+                        <input type="text" name="nome" class="form-control" required placeholder="Ex: Guaraná 2L">
+                    </div>
+                    <div>
+                        <label class="form-label">{{ t("geral_preco_reais") }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background:#f9fafb;border-color:#e5e7eb;">R$</span>
+                            <input type="number" name="preco" step="0.01" min="0.01" class="form-control" required placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("prod_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("prod_adicionar_bebida") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(tab) {
+    document.getElementById('panelPizzas').style.display  = tab==='pizzas'  ? 'block' : 'none';
+    document.getElementById('panelBebidas').style.display = tab==='bebidas' ? 'block' : 'none';
+    document.getElementById('tabPizzas').className  = 'tab-pill' + (tab==='pizzas'  ? ' active' : '');
+    document.getElementById('tabBebidas').className = 'tab-pill' + (tab==='bebidas' ? ' active' : '');
+}
+</script>
+{% endblock %}

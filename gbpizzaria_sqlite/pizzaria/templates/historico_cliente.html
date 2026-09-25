@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Histórico — {{ nome_cliente }}{% endblock %}
+{% block page_title %}{{ t("hist_titulo") }}{% endblock %}
+{% block breadcrumb %}Pedidos de {{ nome_cliente }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+    <div style="width:52px;height:52px;border-radius:14px;background:#dc2626;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;font-weight:800;">
+        {{ nome_cliente[0]|upper }}
+    </div>
+    <div>
+        <h3 style="font-size:20px;font-weight:800;margin:0;">{{ nome_cliente }}</h3>
+        <span style="font-size:13px;color:#6b7280;">{{ pedidos|length }} {{ t("hist_pedidos") }}</span>
+    </div>
+</div>
+
+{% if pedidos %}
+{% set total_gasto = pedidos | selectattr('status', 'ne', 'Cancelado') | sum(attribute='preco_final') %}
+{% set total_pedidos = pedidos | selectattr('status', 'ne', 'Cancelado') | list | length %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-label">{{ t("hist_total_gasto") }}</div>
+            <div class="stat-value">R$ {{ "%.2f"|format(total_gasto) }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-label">{{ t("hist_pedidos_realizados") }}</div>
+            <div class="stat-value">{{ total_pedidos }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card shadow-sm">
+            <div class="stat-label">{{ t("hist_ticket_medio") }}</div>
+            <div class="stat-value">R$ {{ "%.2f"|format(total_gasto / total_pedidos if total_pedidos else 0) }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        {% for p in pedidos %}
+        <div style="padding:18px 20px;border-bottom:1px solid #f3f4f6;{% if p.status == 'Cancelado' %}opacity:.6;{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span style="font-size:11px;color:#9ca3af;font-weight:600;">{{ t("dash_pedido") }} #{{ p.id }}</span>
+                    <span style="margin-left:10px;font-size:11.5px;color:#6b7280;">{{ p.data }} — {{ p.atendente }}</span>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    {% if p.status == 'Cancelado' %}
+                    <span style="background:#fee2e2;color:#dc2626;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("geral_cancelado") }}</span>
+                    {% elif p.status == 'Pronto' %}
+                    <span style="background:#f0fdf4;color:#16a34a;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ t("geral_entregue") }}</span>
+                    {% else %}
+                    <span style="background:#fef9c3;color:#854d0e;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:600;">{{ p.status }}</span>
+                    {% endif %}
+                    {% if p.teve_desconto %}
+                    <span style="background:#ede9fe;color:#6d28d9;border-radius:20px;padding:3px 8px;font-size:11px;font-weight:600;">{{ t("dash_badge_desconto") }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="d-flex gap-4">
+                <div style="flex:1;">
+                    {% for item in p.itens %}
+                    <div style="font-size:13px;color:#6b7280;padding:1px 0;">{{ item.quantidade }}x {{ item.nome }}</div>
+                    {% endfor %}
+                    {% if p.observacoes %}
+                    <div style="font-size:12px;color:#854d0e;background:#fefce8;border-radius:5px;padding:3px 7px;margin-top:4px;display:inline-block;">
+                        📝 {{ p.observacoes }}
+                    </div>
+                    {% endif %}
+                    {% if p.motivo_cancelamento %}
+                    <div style="font-size:12px;color:#dc2626;margin-top:4px;">✕ {{ p.motivo_cancelamento }}</div>
+                    {% endif %}
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:16px;font-weight:800;color:{% if p.status == 'Cancelado' %}#9ca3af{% else %}#16a34a{% endif %};">
+                        R$ {{ "%.2f"|format(p.preco_final) }}
+                    </div>
+                    <div style="font-size:11.5px;color:#9ca3af;">
+                        {% if p.tipo_entrega == 'Entrega' %}{{ t("dash_entrega") }}{% else %}{{ t("dash_balcao") }}{% endif %}
+                        · {{ p.forma_pagamento }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card shadow-sm p-5 text-center" style="color:#9ca3af;">
+    <div style="font-size:40px;">📋</div>
+    <div style="margin-top:10px;font-size:14px;">{{ t("hist_vazio") }}</div>
+</div>
+{% endif %}
+{% endblock %}

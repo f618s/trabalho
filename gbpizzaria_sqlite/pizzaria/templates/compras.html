@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav_compras") }} — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("compras_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("compras_subtitulo") }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('fornecedores') }}" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+    <i class="bi bi-truck"></i> {{ t("compras_btn_fornecedores") }}
+</a>
+<button class="btn-red" data-bs-toggle="modal" data-bs-target="#modalNovaCompra" style="margin-left:8px;">
+    <i class="bi bi-cart-plus me-1"></i> {{ t("compras_btn_nova") }}
+</button>
+{% endblock %}
+
+{% block content %}
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("compras_total_gasto") }}</div>
+                    <div class="stat-value">R$ {{ "%.2f"|format(resumo.total) }}</div>
+                </div>
+                <div class="stat-icon" style="background:#fef2f2;">💸</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="stat-card shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-label">{{ t("compras_n_compras") }}</div>
+                    <div class="stat-value">{{ resumo.n_compras }}</div>
+                </div>
+                <div class="stat-icon" style="background:#eff6ff;">📦</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="GET" action="{{ url_for('compras') }}" class="card shadow-sm p-3 mb-4">
+    <div class="d-flex gap-3 align-items-end flex-wrap">
+        <div>
+            <label class="form-label mb-1" style="font-size:11.5px;">{{ t("rel_filtro_inicio") }}</label>
+            <input type="date" name="data_inicio" class="form-control form-control-sm" value="{{ data_inicio }}" style="width:160px;">
+        </div>
+        <div>
+            <label class="form-label mb-1" style="font-size:11.5px;">{{ t("rel_filtro_fim") }}</label>
+            <input type="date" name="data_fim" class="form-control form-control-sm" value="{{ data_fim }}" style="width:160px;">
+        </div>
+        <div>
+            <label class="form-label mb-1" style="font-size:11.5px;">{{ t("compras_filtro_fornecedor") }}</label>
+            <select name="fornecedor_id" class="form-select form-select-sm" style="width:200px;">
+                <option value="">{{ t("compras_filtro_todos") }}</option>
+                {% for f in fornecedores %}
+                <option value="{{ f.id }}" {% if fornecedor_filtro == f.id|string %}selected{% endif %}>{{ f.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-red" style="font-size:13px;padding:7px 16px;">
+            <i class="bi bi-funnel me-1"></i> {{ t("rel_filtro_btn") }}
+        </button>
+        {% if data_inicio or data_fim or fornecedor_filtro %}
+        <a href="{{ url_for('compras') }}" class="btn-ghost" style="font-size:13px;padding:7px 14px;">{{ t("rel_filtro_limpar") }}</a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("compras_col_data")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("compras_col_produto")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("compras_col_fornecedor")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;text-align:center;">{{ t("compras_col_qtd")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;text-align:right;">{{ t("compras_col_preco_un")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;text-align:right;">{{ t("compras_col_total")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("compras_col_usuario")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimentacoes %}
+                    <tr class="table-row-item">
+                        <td style="padding:12px 16px;color:#6b7280;font-size:12px;">{{ m.data }}</td>
+                        <td style="padding:12px 16px;font-weight:600;">{{ m.produto_nome }}</td>
+                        <td style="padding:12px 16px;color:#6b7280;">{{ m.fornecedor or '—' }}</td>
+                        <td style="padding:12px 16px;text-align:center;font-weight:700;">{{ "%.0f"|format(m.quantidade) }}</td>
+                        <td style="padding:12px 16px;text-align:right;color:#6b7280;">R$ {{ "%.2f"|format(m.preco_unitario) }}</td>
+                        <td style="padding:12px 16px;text-align:right;font-weight:700;color:#dc2626;">R$ {{ "%.2f"|format(m.quantidade * m.preco_unitario) }}</td>
+                        <td style="padding:12px 16px;color:#6b7280;font-size:12px;">{{ m.usuario or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center py-5" style="color:#9ca3af;">
+                        <div style="font-size:32px;">🛒</div>
+                        {{ t("compras_sem_registros") }}
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVA COMPRA -->
+<div class="modal fade" id="modalNovaCompra" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" style="color:#fff;font-size:15px;font-weight:700;">🛒 {{ t("compras_modal_titulo") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('nova_compra') }}" onsubmit="return montarItensCompra()">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("compras_modal_fornecedor") }}</label>
+                        <select name="fornecedor_id" class="form-select">
+                            <option value="">{{ t("compras_modal_sem_forn") }}</option>
+                            {% for f in fornecedores %}
+                            <option value="{{ f.id }}">{{ f.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <label class="form-label">{{ t("compras_modal_itens") }}</label>
+                    <div id="compra_itens_list"></div>
+                    <button type="button" class="btn-ghost mt-2" onclick="addItemCompra()">
+                        <i class="bi bi-plus"></i> {{ t("compras_modal_add_item") }}
+                    </button>
+
+                    <input type="hidden" name="itens_json" id="compra_itens_json" value="[]">
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("compras_modal_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("compras_modal_registrar") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUTOS = [
+    {% for p in produtos %}
+    {id: {{ p.id }}, nome: "{{ p.nome|e }}", tipo: "{{ p.tipo }}"}{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+const TRAD_COMPRAS = {
+    sel_produto: "{{ t('compras_modal_itens') }}",
+    nenhum_item: "{{ t('geral_nenhum_item') }}",
+};
+let compraItens = [];
+
+function addItemCompra() {
+    compraItens.push({produto_id:'', quantidade:1, preco_unitario:0});
+    renderCompra();
+}
+function removerItemCompra(i) { compraItens.splice(i, 1); renderCompra(); }
+
+function renderCompra() {
+    const box = document.getElementById('compra_itens_list');
+    let html = '';
+    compraItens.forEach((it, idx) => {
+        html += `
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+            <select class="form-select form-select-sm" style="flex:1;" onchange="mudarProdutoCompra(${idx}, this.value)">
+                <option value="">— ${TRAD_COMPRAS.sel_produto} —</option>
+                ${PRODUTOS.map(p =>
+                    `<option value="${p.id}" ${it.produto_id==p.id?'selected':''}>[${p.tipo}] ${p.nome}</option>`
+                ).join('')}
+            </select>
+            <input type="number" class="form-control form-control-sm" style="width:80px;" value="${it.quantidade}"
+                   min="1" step="1" onchange="mudarQtdCompra(${idx}, this.value)" placeholder="Qtd">
+            <input type="number" class="form-control form-control-sm" style="width:100px;" value="${it.preco_unitario}"
+                   min="0" step="0.01" onchange="mudarPrecoCompra(${idx}, this.value)" placeholder="R$">
+            <button type="button" class="btn-ghost" style="padding:5px 9px;" onclick="removerItemCompra(${idx})">✕</button>
+        </div>`;
+    });
+    box.innerHTML = html || '<div style="color:#9ca3af;font-size:12.5px;">' + TRAD_COMPRAS.nenhum_item + '</div>';
+}
+
+function mudarProdutoCompra(i, v) { compraItens[i].produto_id = parseInt(v) || ''; }
+function mudarQtdCompra(i, v)     { compraItens[i].quantidade = parseFloat(v) || 1; }
+function mudarPrecoCompra(i, v)   { compraItens[i].preco_unitario = parseFloat(v) || 0; }
+
+function montarItensCompra() {
+    const validos = compraItens.filter(i => i.produto_id && i.quantidade > 0);
+    if (validos.length === 0) { alert(TRAD_COMPRAS.nenhum_item); return false; }
+    document.getElementById('compra_itens_json').value = JSON.stringify(validos);
+    return true;
+}
+</script>
+{% endblock %}

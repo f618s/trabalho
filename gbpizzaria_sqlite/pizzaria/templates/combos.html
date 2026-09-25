@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav_combos") }} — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("combos_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("combos_subtitulo") }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .combo-card {
+        background: #fff;
+        color: #111827;
+    }
+    .combo-card .combo-nome { color: #dc2626; }
+    .combo-card .combo-desc { color: #6b7280; }
+    .combo-card .combo-itens-box {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .combo-card .combo-item-line { color: #374151; }
+    .combo-card .combo-item-preco { color: #6b7280; }
+    .combo-card .combo-subtotal-label { color: #6b7280; }
+    .combo-card .combo-subtotal-valor { color: #6b7280; }
+    .combo-card .combo-desconto-label { color: #16a34a; }
+    .combo-card .combo-desconto-valor { color: #16a34a; }
+    .combo-card .combo-final-label { color: #111827; }
+    .combo-card .combo-final-valor { color: #111827; }
+    .combo-card hr { border-color: #e5e7eb; }
+
+    html.dark .combo-card {
+        background: #1e293b !important;
+        color: #f1f5f9;
+    }
+    html.dark .combo-card .combo-nome { color: #f87171 !important; }
+    html.dark .combo-card .combo-desc { color: #94a3b8 !important; }
+    html.dark .combo-card .combo-itens-box {
+        background: #0f172a !important;
+        border: 1px solid #334155;
+    }
+    html.dark .combo-card .combo-item-line { color: #e2e8f0 !important; }
+    html.dark .combo-card .combo-item-preco { color: #94a3b8 !important; }
+    html.dark .combo-card .combo-subtotal-label { color: #94a3b8 !important; }
+    html.dark .combo-card .combo-subtotal-valor { color: #94a3b8 !important; }
+    html.dark .combo-card .combo-desconto-label { color: #4ade80 !important; }
+    html.dark .combo-card .combo-desconto-valor { color: #4ade80 !important; }
+    html.dark .combo-card .combo-final-label { color: #f1f5f9 !important; }
+    html.dark .combo-card .combo-final-valor { color: #f1f5f9 !important; }
+    html.dark .combo-card hr { border-color: #334155 !important; }
+    html.dark .combo-badge {
+        background: #450a0a !important;
+        color: #fca5a5 !important;
+    }
+    html.dark .combo-card.combo-inativo {
+        opacity: .5;
+    }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn-red" data-bs-toggle="modal" data-bs-target="#modalNovoCombo">
+    <i class="bi bi-plus-lg me-1"></i> {{ t("combos_btn_novo") }}
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    {% for c in combos %}
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card combo-card shadow-sm p-4 h-100 {% if not c.ativo %}combo-inativo{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="combo-nome" style="font-weight:800;margin:0;">{{ c.nome }}</h5>
+                <span class="combo-badge" style="background:#fef2f2;color:#dc2626;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;">
+                    -R$ {{ "%.2f"|format(c.desconto) }}
+                </span>
+            </div>
+            <p class="combo-desc" style="font-size:12.5px;margin:0 0 12px;">{{ c.descricao }}</p>
+
+            <div class="combo-itens-box" style="margin-bottom:12px;">
+                {% for item in c.itens %}
+                <div class="combo-item-line" style="font-size:12.5px;padding:2px 0;">
+                    • {{ item.quantidade }}x {{ item.nome }}
+                    <span class="combo-item-preco" style="float:right;">R$ {{ "%.2f"|format(item.preco) }}</span>
+                </div>
+                {% endfor %}
+                <hr style="margin:8px 0;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span class="combo-subtotal-label">{{ t("combos_itens_subtotal") }}</span>
+                    <span class="combo-subtotal-valor">R$ {{ "%.2f"|format(c.subtotal) }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <span class="combo-desconto-label">{{ t("combos_itens_desconto") }}</span>
+                    <span class="combo-desconto-valor">- R$ {{ "%.2f"|format(c.desconto) }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px;margin-top:4px;">
+                    <span class="combo-final-label">{{ t("combos_itens_preco_final") }}</span>
+                    <span class="combo-final-valor">R$ {{ "%.2f"|format(c.preco_final) }}</span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <form method="POST" action="{{ url_for('alternar_combo', combo_id=c.id) }}" style="flex:1;">
+                    <button type="submit" style="width:100%;background:{% if c.ativo %}#fef2f2{% else %}#f0fdf4{% endif %};color:{% if c.ativo %}#dc2626{% else %}#16a34a{% endif %};border:1.5px solid;border-color:{% if c.ativo %}#fecaca{% else %}#bbf7d0{% endif %};border-radius:8px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;">
+                        {{ t('combos_btn_desativar') if c.ativo else t('combos_btn_ativar') }}
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('remover_combo', combo_id=c.id) }}"
+                      onsubmit="return confirm('{{ t('combos_confirm_remover') }}');">
+                    <button type="submit" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card p-5 text-center" style="color:#9ca3af;">
+            <div style="font-size:40px;">🎁</div>
+            <div style="margin-top:10px;">{{ t("combos_sem_registros") }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- MODAL NOVO COMBO -->
+<div class="modal fade" id="modalNovoCombo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" style="color:#fff;font-size:15px;font-weight:700;">🎁 {{ t("combos_modal_novo") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('novo_combo') }}" onsubmit="return montarItensJson()">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ t("combos_modal_nome") }}</label>
+                            <input type="text" name="nome" class="form-control" required placeholder="Ex: Combo Casal">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">{{ t("combos_modal_desconto") }}</label>
+                            <input type="number" step="0.01" min="0" name="desconto" class="form-control" required value="0.00">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("combos_modal_descricao") }}</label>
+                        <input type="text" name="descricao" class="form-control" placeholder="Ex: 2 pizzas grandes + refri 2L">
+                    </div>
+
+                    <label class="form-label">{{ t("combos_modal_itens") }}</label>
+                    <div id="combo_itens_list"></div>
+                    <button type="button" class="btn-ghost mt-2" onclick="addItemCombo()">
+                        <i class="bi bi-plus"></i> {{ t("combos_modal_add_item") }}
+                    </button>
+
+                    <input type="hidden" name="itens_json" id="combo_itens_json" value="[]">
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("combos_modal_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("combos_modal_criar") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PIZZAS = {{ cardapio_pizzas|tojson }};
+const BEBIDAS = {{ cardapio_bebidas|tojson }};
+const TRAD_COMBOS = {
+    sel_produto: "{{ t('combos_modal_sel_produto') }}",
+    sem_itens: "{{ t('combos_sem_itens') }}",
+};
+let comboItens = [];
+
+function addItemCombo() {
+    comboItens.push({tipo:'Pizza', nome:'', preco:0, quantidade:1});
+    renderCombo();
+}
+
+function removerItemCombo(i) {
+    comboItens.splice(i, 1);
+    renderCombo();
+}
+
+function renderCombo() {
+    const box = document.getElementById('combo_itens_list');
+    let html = '';
+    comboItens.forEach((it, idx) => {
+        html += `
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+            <select class="form-select form-select-sm" style="width:100px;" onchange="mudarTipoCombo(${idx}, this.value)">
+                <option value="Pizza" ${it.tipo==='Pizza'?'selected':''}>Pizza</option>
+                <option value="Bebida" ${it.tipo==='Bebida'?'selected':''}>Bebida</option>
+            </select>
+            <select class="form-select form-select-sm" style="flex:1;" onchange="mudarNomeCombo(${idx}, this.value)">
+                <option value="">${TRAD_COMBOS.sel_produto}</option>
+                ${Object.keys(it.tipo==='Pizza'?PIZZAS:BEBIDAS).map(n =>
+                    `<option value="${n}" ${it.nome===n?'selected':''}>${n}</option>`).join('')}
+            </select>
+            <input type="number" class="form-control form-control-sm" style="width:80px;" value="${it.quantidade}"
+                   min="1" onchange="mudarQtdCombo(${idx}, this.value)" title="Qtd">
+            <input type="number" step="0.01" class="form-control form-control-sm" style="width:90px;" value="${it.preco}"
+                   min="0" onchange="mudarPrecoCombo(${idx}, this.value)" title="Preço unit.">
+            <button type="button" class="btn-ghost" style="padding:5px 9px;" onclick="removerItemCombo(${idx})">✕</button>
+        </div>`;
+    });
+    box.innerHTML = html || '<div style="color:#9ca3af;font-size:12.5px;">' + TRAD_COMBOS.sem_itens + '</div>';
+}
+
+function mudarTipoCombo(i, v) { comboItens[i].tipo = v; comboItens[i].nome = ''; renderCombo(); }
+function mudarNomeCombo(i, v) { comboItens[i].nome = v; preencherPreco(i); renderCombo(); }
+function mudarQtdCombo(i, v)  { comboItens[i].quantidade = parseInt(v)||1; }
+function mudarPrecoCombo(i, v){ comboItens[i].preco = parseFloat(v)||0; }
+
+function preencherPreco(i) {
+    const it = comboItens[i];
+    if (it.tipo === 'Pizza') {
+        const precos = PIZZAS[it.nome] || {};
+        it.preco = precos['Grande'] || 0;
+    } else {
+        it.preco = BEBIDAS[it.nome] || 0;
+    }
+}
+
+function montarItensJson() {
+    if (comboItens.length === 0) { alert('Adicione pelo menos 1 item.'); return false; }
+    if (comboItens.some(i => !i.nome)) { alert('Selecione o nome de todos os itens.'); return false; }
+    document.getElementById('combo_itens_json').value = JSON.stringify(comboItens);
+    return true;
+}
+</script>
+{% endblock %}

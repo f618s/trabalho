@@ -1,0 +1,32 @@
+# Banco de dados
+*.db
+*.sqlite
+*.sqlite3
+
+# Variáveis de ambiente — NUNCA commitar o .env real
+.env
+
+# Ambiente virtual Python
+venv/
+.venv/
+env/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# VSCode
+.vscode/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Distribuição / build
+dist/
+build/
+*.egg-info/

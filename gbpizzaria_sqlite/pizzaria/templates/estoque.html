@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav_estoque") }} — GB Pizzaria{% endblock %}
+{% block page_title %}{{ t("estoque_titulo") }}{% endblock %}
+{% block breadcrumb %}{{ t("estoque_subtitulo") }}{% endblock %}
+
+{% block head_extra %}
+<style>
+    .est-chip {
+        display:inline-flex;align-items:center;gap:4px;
+        border-radius:6px;padding:3px 9px;font-size:11.5px;font-weight:700;
+    }
+    .est-ok      { background:#f0fdf4;color:#16a34a; }
+    .est-baixo   { background:#fef3c7;color:#b45309; }
+    .est-zerado  { background:#fee2e2;color:#dc2626; }
+    html.dark .est-ok     { background:#052e16;color:#86efac; }
+    html.dark .est-baixo  { background:#422006;color:#fcd34d; }
+    html.dark .est-zerado { background:#450a0a;color:#fca5a5; }
+
+    .fardo-resumo {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 13px;
+    }
+    .fardo-resumo .fardo-label { color: #6b7280; }
+    .fardo-resumo .fardo-value { color: #111827; font-weight: 700; }
+    .fardo-resumo .fardo-total { color: #dc2626; }
+
+    html.dark .fardo-resumo {
+        background: #0f172a !important;
+        border: 1px solid #334155;
+    }
+    html.dark .fardo-resumo .fardo-label { color: #94a3b8 !important; }
+    html.dark .fardo-resumo .fardo-value { color: #f1f5f9 !important; }
+    html.dark .fardo-resumo .fardo-total { color: #f87171 !important; }
+</style>
+{% endblock %}
+
+{% block topbar_actions %}
+{% if is_gerente() %}
+<a href="{{ url_for('compras') }}" class="btn-ghost" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+    <i class="bi bi-cart-plus"></i> {{ t("compras_btn_nova") }}
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if estoque_alertas and estoque_alertas > 0 %}
+<div class="alert alert-warning d-flex align-items-center" style="border-radius:10px;">
+    <i class="bi bi-exclamation-triangle-fill me-2" style="font-size:18px;"></i>
+    <strong>{{ estoque_alertas }}</strong>&nbsp;{{ t("estoque_alerta") }}
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;">{{ t("estoque_col_produto")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_quantidade")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_minimo")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_status")|upper }}</th>
+                        <th style="padding:12px 16px;font-size:11px;font-weight:600;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_acoes")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in produtos %}
+                    <tr class="table-row-item">
+                        <td style="padding:14px 16px;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:34px;height:34px;border-radius:8px;background:{% if p.tipo == 'Pizza' %}#fef2f2{% else %}#eff6ff{% endif %};display:flex;align-items:center;justify-content:center;font-size:18px;">
+                                    {% if p.tipo == 'Pizza' %}🍕{% else %}🥤{% endif %}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700;">{{ p.nome }}</div>
+                                    <div style="font-size:11px;color:#9ca3af;">{{ p.tipo }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            <span style="font-weight:800;font-size:16px;color:{% if p.estoque_zerado %}#dc2626{% elif p.estoque_baixo %}#b45309{% else %}#111827{% endif %};">
+                                {{ "%.0f"|format(p.quantidade) }}
+                            </span>
+                            <span style="font-size:11px;color:#9ca3af;">{{ p.unidade }}</span>
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            {% if is_gerente() %}
+                            <form method="POST" action="{{ url_for('definir_minimo_estoque', produto_id=p.id) }}"
+                                  style="display:inline-flex;gap:4px;align-items:center;">
+                                <input type="number" name="minimo" value="{{ p.minimo }}" min="0" step="1"
+                                       style="width:70px;text-align:center;font-size:12px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:6px;">
+                                <input type="hidden" name="unidade" value="{{ p.unidade }}">
+                                <button type="submit" title="Salvar"
+                                        style="background:none;border:none;color:#6b7280;cursor:pointer;padding:3px;">
+                                    <i class="bi bi-check2"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span style="font-size:12.5px;color:#6b7280;">{{ "%.0f"|format(p.minimo) }} {{ p.unidade }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;">
+                            {% if p.estoque_zerado %}
+                            <span class="est-chip est-zerado">❌ {{ t("estoque_status_zerado") }}</span>
+                            {% elif p.estoque_baixo %}
+                            <span class="est-chip est-baixo">⚠️ {{ t("estoque_status_baixo") }}</span>
+                            {% else %}
+                            <span class="est-chip est-ok">✅ {{ t("estoque_status_ok") }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:14px 16px;text-align:center;white-space:nowrap;">
+                            {% if is_gerente() %}
+                            <button type="button" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer;"
+                                    onclick="abrirFardo({{ p.id }}, '{{ p.nome|e }}')">
+                                📦 {{ t("estoque_btn_fardo") }}
+                            </button>
+                            <button type="button" class="btn-red" style="font-size:11.5px;padding:5px 10px;margin-left:4px;"
+                                    onclick="abrirMov({{ p.id }}, '{{ p.nome|e }}', 'entrada')">
+                                <i class="bi bi-plus-lg"></i> {{ t("estoque_btn_entrada") }}
+                            </button>
+                            <button type="button" class="btn-ghost" style="font-size:11.5px;padding:5px 10px;margin-left:4px;"
+                                    onclick="abrirMov({{ p.id }}, '{{ p.nome|e }}', 'saida')">
+                                <i class="bi bi-dash-lg"></i> {{ t("estoque_btn_saida") }}
+                            </button>
+                            {% else %}
+                            <span style="font-size:11.5px;color:#9ca3af;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center py-5" style="color:#9ca3af;">{{ t("estoque_sem_produtos") }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-body p-0">
+        <div class="d-flex align-items-center px-4 py-3" style="border-bottom:1px solid #f3f4f6;">
+            <h6 style="font-weight:700;margin:0;">
+                <i class="bi bi-clock-history me-2" style="color:#dc2626;"></i>{{ t("estoque_ultimas_mov") }}
+            </h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("estoque_col_data")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("estoque_col_produto")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_tipo")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;text-align:center;">{{ t("estoque_col_quantidade")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("estoque_col_motivo")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("estoque_col_fornecedor")|upper }}</th>
+                        <th style="padding:10px 16px;font-size:11px;color:#6b7280;border:none;">{{ t("estoque_col_usuario")|upper }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimentacoes %}
+                    <tr class="table-row-item">
+                        <td style="padding:10px 16px;color:#6b7280;font-size:12px;">{{ m.data }}</td>
+                        <td style="padding:10px 16px;font-weight:600;">{{ m.produto_nome }}</td>
+                        <td style="padding:10px 16px;text-align:center;">
+                            {% if m.tipo == 'entrada' %}<span style="color:#16a34a;font-weight:700;">⬆ {{ t("estoque_tipo_entrada") }}</span>
+                            {% elif m.tipo == 'saida' %}<span style="color:#dc2626;font-weight:700;">⬇ {{ t("estoque_tipo_saida") }}</span>
+                            {% else %}<span style="color:#6b7280;font-weight:700;">⟳ {{ t("estoque_tipo_ajuste") }}</span>{% endif %}
+                        </td>
+                        <td style="padding:10px 16px;text-align:center;font-weight:700;">{{ "%.0f"|format(m.quantidade) }}</td>
+                        <td style="padding:10px 16px;color:#6b7280;font-size:12px;">{{ m.motivo or '—' }}</td>
+                        <td style="padding:10px 16px;color:#6b7280;font-size:12px;">{{ m.fornecedor or '—' }}</td>
+                        <td style="padding:10px 16px;color:#6b7280;font-size:12px;">{{ m.usuario or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center py-4" style="color:#9ca3af;">{{ t("estoque_sem_mov") }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if is_gerente() %}
+<!-- MODAL MOVIMENTAÇÃO -->
+<div class="modal fade" id="modalMov" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#111827;border-radius:14px 14px 0 0;padding:16px 20px;">
+                <h5 class="modal-title" id="movTitulo" style="color:#fff;font-size:14px;font-weight:700;">{{ t("estoque_modal_mov") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formMov" method="POST">
+                <div class="modal-body" style="padding:20px;">
+                    <input type="hidden" name="tipo" id="movTipo">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("estoque_modal_quantidade") }}</label>
+                        <input type="number" name="quantidade" step="1" min="1" required class="form-control" value="1">
+                    </div>
+                    <div class="mb-3" id="blocoPreco">
+                        <label class="form-label">{{ t("estoque_modal_preco_unit") }}</label>
+                        <input type="number" name="preco_unitario" step="0.01" min="0" class="form-control" value="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("estoque_modal_fornecedor") }}</label>
+                        <input type="text" name="fornecedor" class="form-control" placeholder="Ex: Distribuidora XYZ">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("estoque_modal_motivo") }}</label>
+                        <input type="text" name="motivo" class="form-control" placeholder="Ex: Compra semanal">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 20px 18px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("estoque_modal_cancelar") }}</button>
+                    <button type="submit" class="btn-red">{{ t("estoque_modal_confirmar") }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL COMPRAR FARDO -->
+<div class="modal fade" id="modalFardo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-header" style="background:#f59e0b;border-radius:14px 14px 0 0;padding:18px 24px;">
+                <h5 class="modal-title" id="fardoTitulo" style="color:#fff;font-size:15px;font-weight:700;">📦 {{ t("estoque_modal_fardo_titulo") }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('compra_fardo') }}">
+                <input type="hidden" name="produto_id" id="fardoProdutoId">
+                <div class="modal-body" style="padding:24px;">
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("estoque_fardo_fornecedor") }}</label>
+                        <select name="fornecedor_id" class="form-select">
+                            <option value="">{{ t("estoque_fardo_sem_forn") }}</option>
+                            {% for f in fornecedores_view|default([]) %}
+                            <option value="{{ f.id }}">{{ f.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">{{ t("estoque_fardo_unid_por_fardo") }}</label>
+                            <input type="number" name="unidades_por_fardo" id="fardoUnidPorFardo"
+                                   step="1" min="1" required class="form-control" value="12">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">{{ t("estoque_fardo_qtd_fardos") }}</label>
+                            <input type="number" name="qtd_fardos" id="fardoQtdFardos"
+                                   step="1" min="1" required class="form-control" value="1">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ t("estoque_fardo_preco") }}</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input type="number" name="preco_fardo" id="fardoPreco"
+                                   step="0.01" min="0" required class="form-control" value="0.00"
+                                   oninput="atualizarResumoFardo()">
+                        </div>
+                    </div>
+
+                    <div class="fardo-resumo" id="resumoFardo"></div>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 20px;gap:8px;">
+                    <button type="button" class="btn-ghost" data-bs-dismiss="modal">{{ t("estoque_modal_cancelar") }}</button>
+                    <button type="submit" style="background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">
+                        📦 {{ t("estoque_fardo_registrar") }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TRAD_FARDO = {
+    total_un: "{{ t('estoque_fardo_total_un') }}",
+    total_pago: "{{ t('estoque_fardo_total_pago') }}",
+    preco_un: "{{ t('estoque_fardo_preco_un') }}",
+    entrada: "{{ t('estoque_tipo_entrada') }}",
+    saida: "{{ t('estoque_tipo_saida') }}",
+    ajuste: "{{ t('estoque_tipo_ajuste') }}",
+};
+
+{% if is_gerente() %}
+function abrirMov(produtoId, nome, tipo) {
+    document.getElementById('formMov').action = '/estoque/ajustar/' + produtoId;
+    document.getElementById('movTipo').value = tipo;
+    let label = tipo === 'entrada' ? '📥 ' + TRAD_FARDO.entrada : (tipo === 'saida' ? '📤 ' + TRAD_FARDO.saida : '⟳ ' + TRAD_FARDO.ajuste);
+    document.getElementById('movTitulo').textContent = label + ' — ' + nome;
+    document.getElementById('blocoPreco').style.display = (tipo === 'entrada') ? 'block' : 'none';
+    new bootstrap.Modal(document.getElementById('modalMov')).show();
+}
+
+function abrirFardo(produtoId, nome) {
+    document.getElementById('fardoProdutoId').value = produtoId;
+    document.getElementById('fardoTitulo').textContent = '📦 ' + nome;
+    atualizarResumoFardo();
+    new bootstrap.Modal(document.getElementById('modalFardo')).show();
+}
+
+function atualizarResumoFardo() {
+    const upf = parseFloat(document.getElementById('fardoUnidPorFardo').value) || 0;
+    const qtd = parseFloat(document.getElementById('fardoQtdFardos').value) || 0;
+    const preco = parseFloat(document.getElementById('fardoPreco').value) || 0;
+    const totalUn = upf * qtd;
+    const totalPago = preco * qtd;
+    const precoUn = upf > 0 ? (preco / upf) : 0;
+    document.getElementById('resumoFardo').innerHTML = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span class="fardo-label">${TRAD_FARDO.total_un}</span>
+            <span class="fardo-value">${totalUn}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span class="fardo-label">${TRAD_FARDO.total_pago}</span>
+            <span class="fardo-value fardo-total">R$ ${totalPago.toFixed(2)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+            <span class="fardo-label">${TRAD_FARDO.preco_un}</span>
+            <span class="fardo-value">R$ ${precoUn.toFixed(2)}</span>
+        </div>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    ['fardoUnidPorFardo','fardoQtdFardos','fardoPreco'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', atualizarResumoFardo);
+    });
+    atualizarResumoFardo();
+});
+{% endif %}
+</script>
+{% endblock %}
